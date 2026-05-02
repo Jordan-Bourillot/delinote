@@ -67,6 +67,10 @@ export function TriskellMark({ size = 14, className = '' }: { size?: number; cla
 }
 
 function SvgFallback({ size, className }: { size: number; className: string }) {
+  // Triskèle redesign — three rounded teardrop petals at 120° with a tiny
+  // swirl (one side longer than the other so the whole thing reads as
+  // "movement / spiral" rather than "static cloverleaf"). White core for
+  // strong pop against any background. Tested at 11 / 14 / 18 px.
   return (
     <svg
       width={size}
@@ -77,11 +81,26 @@ function SvgFallback({ size, className }: { size: number; className: string }) {
       aria-label="Triskell Studio"
       style={{ display: 'inline-block', verticalAlign: 'middle' }}
     >
-      {/* Triskèle officiel : 3 feuilles spirale rotatées de 120° en indigo / violet / orange */}
-      <path d="M18,18 C20,15 22,10 20,6 C18,2 13,3 13,7.5 C13,12 16,15.5 18,18Z" fill="#6366F1" />
-      <path d="M18,18 C20,15 22,10 20,6 C18,2 13,3 13,7.5 C13,12 16,15.5 18,18Z" fill="#8B5CF6" transform="rotate(120 18 18)" />
-      <path d="M18,18 C20,15 22,10 20,6 C18,2 13,3 13,7.5 C13,12 16,15.5 18,18Z" fill="#F97316" transform="rotate(240 18 18)" />
-      <circle cx="18" cy="18" r="2.6" fill="currentColor" />
+      <g transform="translate(18 18)">
+        {/* Petal — wide at center, tapering to a curled tip up-and-right */}
+        <path
+          d="M -3 1 Q -5 -3 -1 -10 Q 3 -15 7 -11 Q 9 -7 5 -3 Q 1 0 -3 1 Z"
+          fill="#F37223"
+        />
+        <path
+          d="M -3 1 Q -5 -3 -1 -10 Q 3 -15 7 -11 Q 9 -7 5 -3 Q 1 0 -3 1 Z"
+          fill="#6366F1"
+          transform="rotate(120)"
+        />
+        <path
+          d="M -3 1 Q -5 -3 -1 -10 Q 3 -15 7 -11 Q 9 -7 5 -3 Q 1 0 -3 1 Z"
+          fill="#FACC15"
+          transform="rotate(240)"
+        />
+        {/* Central pearl — subtle inner shadow via stroke for definition */}
+        <circle r="3.4" fill="#FFFFFF" />
+        <circle r="3.4" fill="none" stroke="rgba(27,35,48,0.18)" strokeWidth="0.6" />
+      </g>
     </svg>
   );
 }

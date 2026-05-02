@@ -19,6 +19,15 @@ type Entry = {
 
 export const CHANGELOG: Entry[] = [
   {
+    version: '0.9.5',
+    date: '2026-05-03',
+    title: 'Logo Triskell Studio redessiné',
+    highlights: [
+      '🎨 **Nouveau triskèle Triskell Studio** : 3 pétales spiralées (orange · indigo · or) bien lisibles à toutes les tailles. Visible dans la sidebar, l\'écran d\'accueil, l\'écran « Bêta expirée » et la section « À propos »',
+      '🪶 Détail mais soigné — un cœur blanc avec un liseré subtil donne du contraste sur tous les fonds',
+    ],
+  },
+  {
     version: '0.9.4',
     date: '2026-05-02',
     title: 'Section Labo : 8 innovations + ton avis compte',
