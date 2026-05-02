@@ -227,9 +227,143 @@ function AppearanceSection({ settings, set }: { settings: Settings; set: any }) 
           onChange={(v) => set('accentColor', v)}
           presets={['#F37223', '#1B2330', '#0d9488', '#0ea5e9', '#fbbf24', '#a855f7', '#fb7185']}
         />
+        <BackgroundImageField
+          imageDataUrl={settings.backgroundImage}
+          opacity={settings.backgroundOpacity}
+          onImageChange={(v) => set('backgroundImage', v)}
+          onOpacityChange={(v) => set('backgroundOpacity', v)}
+        />
       </div>
     </div>
   );
+}
+
+function BackgroundImageField({
+  imageDataUrl,
+  opacity,
+  onImageChange,
+  onOpacityChange,
+}: {
+  imageDataUrl: string;
+  opacity: number;
+  onImageChange: (v: string) => void;
+  onOpacityChange: (v: number) => void;
+}) {
+  const toast = useStore((s) => s.toast);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  async function pickFile(file: File) {
+    if (!file.type.startsWith('image/')) {
+      toast('error', 'Le fichier sélectionné n\'est pas une image.');
+      return;
+    }
+    // Downscale to ≤1920px wide so a 4 K photo doesn't blow past localStorage
+    // (settings live there) — most JPEGs land ≈400-800 KB after re-encode.
+    try {
+      const dataUrl = await downscaleImageToDataUrl(file, 1920, 0.85);
+      onImageChange(dataUrl);
+      toast('success', 'Image de fond appliquée.');
+    } catch (e) {
+      toast('error', `Impossible de charger l'image : ${String(e)}`);
+    }
+  }
+
+  return (
+    <div className="py-2.5 space-y-2.5 border-t theme-border-soft mt-2 pt-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <label className="text-sm theme-text font-medium">Image de fond</label>
+          <p className="text-xs theme-muted mt-0.5">
+            Une photo personnelle en arrière-plan de l'app. Joue avec l'opacité pour la rendre discrète.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {imageDataUrl ? (
+            <>
+              <div
+                className="w-12 h-9 rounded border theme-border-soft bg-cover bg-center"
+                style={{ backgroundImage: `url(${imageDataUrl})` }}
+                aria-label="Aperçu"
+              />
+              <button
+                onClick={() => inputRef.current?.click()}
+                className="text-xs theme-muted hover:theme-text px-2 py-1 rounded theme-input"
+              >
+                Changer
+              </button>
+              <button
+                onClick={() => onImageChange('')}
+                className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded"
+              >
+                Retirer
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => inputRef.current?.click()}
+              className="text-xs theme-muted hover:theme-text px-2 py-1 rounded theme-input"
+            >
+              Choisir une image…
+            </button>
+          )}
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void pickFile(f);
+            e.target.value = '';
+          }}
+        />
+      </div>
+      {imageDataUrl && (
+        <div className="flex items-center gap-3">
+          <label className="text-xs theme-muted shrink-0 w-20">Opacité</label>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={opacity}
+            onChange={(e) => onOpacityChange(Number(e.target.value))}
+            className="flex-1"
+          />
+          <span className="text-xs theme-text tabular-nums w-10 text-right">{opacity}%</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Read a File, draw it on a canvas no wider than `maxWidth`, return a JPEG
+ * data URL. Aspect ratio is preserved. Used to keep background images small
+ * enough to fit in localStorage settings.
+ */
+async function downscaleImageToDataUrl(file: File, maxWidth: number, quality: number): Promise<string> {
+  const blobUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error('Image illisible'));
+      i.src = blobUrl;
+    });
+    const ratio = Math.min(1, maxWidth / img.naturalWidth);
+    const w = Math.round(img.naturalWidth * ratio);
+    const h = Math.round(img.naturalHeight * ratio);
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas non disponible');
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL('image/jpeg', quality);
+  } finally {
+    URL.revokeObjectURL(blobUrl);
+  }
 }
 
 function DataSection({ exportSettings, importSettings }: { exportSettings: () => void; importSettings: () => void }) {

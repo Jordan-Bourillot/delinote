@@ -439,7 +439,19 @@ export default function App() {
   }
 
   return (
-    <div className="h-full flex flex-col theme-bg">
+    <div className="h-full flex flex-col theme-bg relative">
+      {settings.backgroundImage && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-center bg-cover bg-no-repeat"
+          style={{
+            backgroundImage: `url(${settings.backgroundImage})`,
+            opacity: Math.max(0, Math.min(1, settings.backgroundOpacity / 100)),
+            zIndex: 0,
+          }}
+        />
+      )}
+      <div className="relative z-[1] flex flex-col h-full">
       <UpdateBanner />
       <BetaBanner />
       <div className="flex-1 flex min-h-0">
@@ -470,6 +482,7 @@ export default function App() {
       {showMedReminder && !showOnboarding && !showTour && !showWhatsNew && (
         <MedicationStartupReminder onClose={() => setShowMedReminder(false)} />
       )}
+      </div>
     </div>
   );
 }

@@ -46,7 +46,7 @@ function NotificationDropdown({ onClose }: { onClose: () => void }) {
   const df = useDateFmt();
 
   return (
-    <div className="absolute top-full right-0 mt-2 w-80 max-h-96 theme-popover rounded-lg shadow-2xl border theme-border overflow-hidden z-50 flex flex-col">
+    <div className="absolute top-full left-0 mt-2 w-80 max-h-96 theme-popover rounded-lg shadow-2xl border theme-border overflow-hidden z-50 flex flex-col">
       <div className="px-3 py-2 border-b theme-border-soft flex items-center justify-between">
         <h3 className="text-sm font-semibold theme-text flex items-center gap-2">
           <Bell size={13} />

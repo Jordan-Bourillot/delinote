@@ -12,6 +12,9 @@ export type Settings = {
   fontFamily: 'sans' | 'serif' | 'mono';
   fontSize: number; // 14-22
   accentColor: string;
+  // Image de fond personnalisée (data URL) + opacité 0-100. '' = pas d'image.
+  backgroundImage: string;
+  backgroundOpacity: number;
 
   // Layout panels
   showSidebar: boolean;
@@ -114,6 +117,8 @@ export const DEFAULT_SETTINGS: Settings = {
   fontFamily: 'sans',
   fontSize: 16,
   accentColor: '#F37223', // LeDenicheur orange — pairs nicely with caribbean cream
+  backgroundImage: '',
+  backgroundOpacity: 30,
 
   showSidebar: true,
   showNoteList: true,
