@@ -1,6 +1,6 @@
 {
   "name": "delinote",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "DéliNote — local-first note-taking app with notes, calendar, tasks, attachments, and medication tracking. 100% offline, no telemetry.",
   "main": "out/main/index.js",
   "author": {

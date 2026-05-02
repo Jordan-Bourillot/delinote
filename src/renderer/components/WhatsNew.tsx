@@ -19,6 +19,17 @@ type Entry = {
 
 export const CHANGELOG: Entry[] = [
   {
+    version: '0.9.3',
+    date: '2026-05-02',
+    title: 'Notes prioritaires + dialogue de mise à jour',
+    highlights: [
+      '⭐ **Notes importantes** : un nouveau bouton (étoile) dans la barre d\'édition encadre la note d\'un **liseré jaune** pour la repérer du premier coup d\'œil. Disponible aussi via clic droit sur n\'importe quelle note',
+      '⚡ **Notes urgentes** : un autre bouton (éclair) ajoute un **liseré bleu**. Combinable avec « importante » → cadre jaune + ring bleu',
+      '🔔 **Clignotement optionnel** des notes urgentes pour attirer l\'attention. Activable/désactivable dans Réglages → Note → « Faire clignoter les notes urgentes ». Respecte la préférence système « réduire les animations »',
+      '🔄 **Dialogue de mise à jour** : quand tu cliques « Installer maintenant » dans le bandeau orange, l\'app affiche désormais un message clair (« DéliNote va se fermer pour installer la nouvelle version, puis se relancera automatiquement ») au lieu du formulaire de retour bêta — l\'app comprend que tu n\'es pas en train de fermer pour de vrai',
+    ],
+  },
+  {
     version: '0.9.1',
     date: '2026-05-02',
     title: 'Test grandeur nature de l\'auto-update',
