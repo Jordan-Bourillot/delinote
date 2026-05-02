@@ -290,7 +290,8 @@ export default function App() {
   const [showUpdating, setShowUpdating] = useState(false);
   const [showFlux, setShowFlux] = useState(false);
   const [showEnergy, setShowEnergy] = useState(false);
-  const [showMoodBoard, setShowMoodBoard] = useState(false);
+  // Mood-board: null = closed, '' = global board, 'noteId' = per-note board.
+  const [moodBoardNoteId, setMoodBoardNoteId] = useState<string | null>(null);
   const [showQrShare, setShowQrShare] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
 
@@ -298,16 +299,22 @@ export default function App() {
   useEffect(() => {
     const onFlux = () => setShowFlux(true);
     const onEnergy = () => setShowEnergy(true);
-    const onMood = () => setShowMoodBoard(true);
+    const onMood = () => setMoodBoardNoteId('');
+    const onMoodNote = (e: Event) => {
+      const id = (e as CustomEvent<{ noteId: string }>).detail?.noteId;
+      if (id) setMoodBoardNoteId(id);
+    };
     const onQr = () => setShowQrShare(true);
     window.addEventListener('delinote:open-flux', onFlux);
     window.addEventListener('delinote:open-energy', onEnergy);
     window.addEventListener('delinote:open-moodboard', onMood);
+    window.addEventListener('delinote:open-moodboard-for-note', onMoodNote);
     window.addEventListener('delinote:open-qrshare', onQr);
     return () => {
       window.removeEventListener('delinote:open-flux', onFlux);
       window.removeEventListener('delinote:open-energy', onEnergy);
       window.removeEventListener('delinote:open-moodboard', onMood);
+      window.removeEventListener('delinote:open-moodboard-for-note', onMoodNote);
       window.removeEventListener('delinote:open-qrshare', onQr);
     };
   }, []);
@@ -512,7 +519,12 @@ export default function App() {
       {settings.labMurmure && <MurmurePanel />}
       {showFlux && <FluxMode onClose={() => setShowFlux(false)} />}
       {showEnergy && <EnergyView onClose={() => setShowEnergy(false)} />}
-      {showMoodBoard && <MoodBoard onClose={() => setShowMoodBoard(false)} />}
+      {moodBoardNoteId !== null && (
+        <MoodBoard
+          noteId={moodBoardNoteId === '' ? null : moodBoardNoteId}
+          onClose={() => setMoodBoardNoteId(null)}
+        />
+      )}
       {showQrShare && <QrShare onClose={() => setShowQrShare(false)} />}
       </div>
     </div>

@@ -1,14 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { Layout, X, Plus, Type as TypeIcon, Image as ImageIcon, Trash2, Download } from 'lucide-react';
+import { useStore } from '../store';
 
 /**
  * Mood-board — a free-form canvas where each item (text snippet, image,
- * sticky note) is positionable by drag-and-drop. The state lives in
- * localStorage under a single key (one global board per app for now).
+ * sticky note) is positionable by drag-and-drop. Each board is **scoped
+ * to a note**: open the moodboard from a note's menu and you get that
+ * note's canvas. A "global" board (no note open) keeps the same UX as
+ * before for users who launched it from the sidebar.
  *
  * Items support:
  *   - text  : editable rich text inside a sticky-note look
  *   - image : pasted/dropped image (rescaled to ≤ 1024 px wide as data URL)
+ *
+ * Storage: one localStorage key per board, indexed by noteId (or
+ * "__global" when no note is open).
  *
  * Interactions:
  *   - Drag to move
@@ -23,22 +29,47 @@ type TextItem = ItemBase & { kind: 'text'; text: string; color: string };
 type ImageItem = ItemBase & { kind: 'image'; src: string; alt?: string };
 type Item = TextItem | ImageItem;
 
-const STORAGE_KEY = 'delinote.moodboard.v1';
+const STORAGE_PREFIX = 'delinote.moodboard.v2.';
+const LEGACY_GLOBAL_KEY = 'delinote.moodboard.v1';
 const STICKY_COLORS = ['#fef3c7', '#fee2e2', '#dcfce7', '#dbeafe', '#ede9fe', '#fce7f3'];
 
-function loadItems(): Item[] {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+function storageKey(noteId: string | null): string {
+  return STORAGE_PREFIX + (noteId ?? '__global');
 }
-function saveItems(items: Item[]) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch { /* ignore */ }
+function loadItems(noteId: string | null): Item[] {
+  try { return JSON.parse(localStorage.getItem(storageKey(noteId)) || '[]'); } catch { return []; }
+}
+function saveItems(noteId: string | null, items: Item[]) {
+  try { localStorage.setItem(storageKey(noteId), JSON.stringify(items)); } catch { /* ignore */ }
 }
 
-export default function MoodBoard({ onClose }: { onClose: () => void }) {
-  const [items, setItems] = useState<Item[]>(loadItems);
+// One-shot migration of the v1 single-board into the new global slot, so users
+// who already started a moodboard before this change don't lose their work.
+function migrateLegacy() {
+  try {
+    const legacy = localStorage.getItem(LEGACY_GLOBAL_KEY);
+    if (!legacy) return;
+    const newKey = storageKey(null);
+    if (!localStorage.getItem(newKey)) localStorage.setItem(newKey, legacy);
+    localStorage.removeItem(LEGACY_GLOBAL_KEY);
+  } catch { /* ignore */ }
+}
+
+export default function MoodBoard({ onClose, noteId }: { onClose: () => void; noteId?: string | null }) {
+  const current = useStore((s) => s.current);
+  const effectiveId = noteId !== undefined ? noteId : current?.id ?? null;
+  const noteTitle = effectiveId === null ? 'Mood-board global' : (current?.title || 'Sans titre');
+  const [items, setItems] = useState<Item[]>(() => { migrateLegacy(); return loadItems(effectiveId); });
   const [editingId, setEditingId] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { saveItems(items); }, [items]);
+  // Reload items if the underlying note changes (different boards per note).
+  useEffect(() => {
+    setItems(loadItems(effectiveId));
+    setEditingId(null);
+  }, [effectiveId]);
+
+  useEffect(() => { saveItems(effectiveId, items); }, [effectiveId, items]);
 
   function addText(x: number, y: number) {
     const it: TextItem = {
@@ -135,7 +166,9 @@ export default function MoodBoard({ onClose }: { onClose: () => void }) {
     <div className="fixed inset-0 z-[60] theme-bg flex flex-col">
       <div className="px-6 py-3 border-b theme-border-soft flex items-center gap-3">
         <Layout size={16} className="theme-accent" />
-        <h2 className="font-semibold theme-text text-sm">Mood-board</h2>
+        <h2 className="font-semibold theme-text text-sm">
+          Mood-board {effectiveId !== null && <span className="theme-muted font-normal">— {noteTitle}</span>}
+        </h2>
         <span className="text-xs theme-muted">
           Double-clic pour ajouter un mot · glisse une image · colle (Ctrl+V) du texte/image
         </span>

@@ -119,6 +119,13 @@ const api = {
   startClipperServer: () => ipcRenderer.invoke('clipper:start'),
   stopClipperServer: () => ipcRenderer.invoke('clipper:stop'),
 
+  // LAN share — spins up a one-hour HTTP server serving a single note as
+  // an HTML page so a friend on the same Wi-Fi can scan a QR and read it.
+  shareStart: (args: { noteId: string; title: string; html: string; text: string }) =>
+    ipcRenderer.invoke('share:start', args),
+  shareStop: (key: string) => ipcRenderer.invoke('share:stop', key),
+  shareList: () => ipcRenderer.invoke('share:list'),
+
   // Generic data-file primitives (CRDT/sync layer)
   readDataFile: (rel: string) => ipcRenderer.invoke('data:read', rel),
   writeDataFile: (rel: string, bytes: ArrayBuffer) => ipcRenderer.invoke('data:write', rel, bytes),

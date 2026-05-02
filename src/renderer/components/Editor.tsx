@@ -574,6 +574,17 @@ function NoteHeader(props: {
                   Retour dans le temps…
                 </MenuItem>
               )}
+              {settings.labMoodboard && (
+                <MenuItem
+                  icon={<span>🎨</span>}
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('delinote:open-moodboard-for-note', { detail: { noteId: props.current.id } }));
+                    props.setMoreOpen(false);
+                  }}
+                >
+                  Mood-board de cette note…
+                </MenuItem>
+              )}
               {settings.enableExport && (
                 <>
                   <MenuItem icon={<Download size={13} />} onClick={() => props.onExport('md')}>{t('editor.exportMd')}</MenuItem>

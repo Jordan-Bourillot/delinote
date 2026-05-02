@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, shell, Menu, nativeImage, Notification, di
 import { existsSync } from 'fs';
 import { promises as fsp } from 'fs';
 import http from 'http';
+import os from 'os';
 import path from 'path';
 import * as storage from './storage';
 import { initUpdater, checkForUpdates, quitAndInstall, getStatus as getUpdateStatus } from './updater';
@@ -292,6 +293,11 @@ app.whenReady().then(async () => {
   ipcMain.handle('clipper:start', () => startClipperServer());
   ipcMain.handle('clipper:stop', () => stopClipperServer());
 
+  // ----- LAN share IPC -----
+  ipcMain.handle('share:start', (_e, args: { noteId: string; title: string; html: string; text: string }) => startShareSession(args));
+  ipcMain.handle('share:stop', (_e, key: string) => { stopShareSession(key); });
+  ipcMain.handle('share:list', () => listShareSessions());
+
   // ----- Beta : feedback dialog confirmation -----
   // Appelé par le renderer quand l'utilisateur a fini avec FeedbackDialog
   // (a cliqué Envoyer ou Pas maintenant). On positionne allowClose pour que
@@ -393,4 +399,136 @@ function startClipperServer() {
   });
   server.listen(38217, '127.0.0.1', () => { clipperServer = server; });
   server.on('error', () => { clipperServer = null; });
+}
+
+// ---------- Local-network "Share via QR" server ----------
+// Spawns a one-shot HTTP server on 0.0.0.0:<random> that serves a single note
+// as an HTML page. The host returns a URL containing a one-time key — encoded
+// into a QR by the renderer. Visitors on the same Wi-Fi scan the QR and see
+// the note in their phone browser. Auto-shuts after SHARE_TTL_MS to bound
+// exposure. Multiple shares can run in parallel (one server per shared note).
+const SHARE_TTL_MS = 60 * 60 * 1000; // 1 hour
+type ShareSession = {
+  key: string;
+  noteId: string;
+  title: string;
+  html: string;
+  text: string;
+  startedAt: number;
+  server: http.Server;
+  port: number;
+  timer: NodeJS.Timeout;
+};
+const shareSessions = new Map<string, ShareSession>();
+
+function getLocalIPs(): string[] {
+  const nets = os.networkInterfaces();
+  const out: string[] = [];
+  for (const list of Object.values(nets)) {
+    for (const ni of list ?? []) {
+      if (ni.family === 'IPv4' && !ni.internal) out.push(ni.address);
+    }
+  }
+  return out;
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  } as any)[c]);
+}
+
+function shareLandingHtml(title: string, html: string, noteId: string, key: string): string {
+  return `<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>${escapeHtml(title)} — DéliNote</title>
+<style>
+  :root { color-scheme: light dark; }
+  html,body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:#FAF6EE;color:#1B2330;}
+  @media (prefers-color-scheme: dark){html,body{background:#0D1418;color:#E5E7EB;}}
+  header{position:sticky;top:0;background:linear-gradient(180deg,#F37223,#E55E0E);color:#fff;padding:12px 16px;box-shadow:0 1px 4px rgba(0,0,0,.15);}
+  header h1{margin:0;font-size:1rem;font-weight:600;letter-spacing:-.01em}
+  header small{display:block;opacity:.85;font-size:.7rem;margin-top:2px}
+  main{max-width:680px;margin:0 auto;padding:18px 18px 80px}
+  main h1,main h2{line-height:1.25}
+  main p{line-height:1.65}
+  img{max-width:100%;height:auto;border-radius:6px}
+  pre,code{background:rgba(0,0,0,.06);padding:.1em .35em;border-radius:4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  pre{padding:12px;overflow-x:auto}
+  blockquote{border-left:3px solid #F37223;padding:.4em 1em;margin:1em 0;background:rgba(243,114,35,.05)}
+  table{border-collapse:collapse}td,th{border:1px solid rgba(0,0,0,.12);padding:.4em .6em}
+  footer{position:fixed;bottom:0;left:0;right:0;text-align:center;padding:8px;background:rgba(255,255,255,.85);backdrop-filter:blur(6px);font-size:.7rem;color:#666;border-top:1px solid rgba(0,0,0,.08)}
+  @media(prefers-color-scheme: dark){footer{background:rgba(13,20,24,.85);color:#aaa;border-color:rgba(255,255,255,.08)}}
+  a{color:#F37223;text-decoration:none}a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<header>
+  <h1>${escapeHtml(title || 'Sans titre')}</h1>
+  <small>Partagé depuis DéliNote · session locale uniquement</small>
+</header>
+<main>${html || '<p><em>(note vide)</em></p>'}</main>
+<footer>🔒 Cette page n'est servie que sur ton réseau Wi-Fi. Elle disparaîtra dans 1h.</footer>
+</body>
+</html>`;
+}
+
+function startShareSession(args: { noteId: string; title: string; html: string; text: string }): Promise<{ url: string; urls: string[]; key: string; port: number; expiresAt: number } | null> {
+  const key = (() => {
+    // 6-char alphanumeric key (entropy ≈ 31 bits — fine for 1h ephemeral)
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
+    let s = '';
+    for (let i = 0; i < 6; i++) s += alphabet[Math.floor(Math.random() * alphabet.length)];
+    return s;
+  })();
+  const server = http.createServer((req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    if (req.method !== 'GET' || !req.url) {
+      res.writeHead(405); res.end(); return;
+    }
+    if (req.url === `/s/${key}` || req.url === `/s/${key}/`) {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(shareLandingHtml(args.title, args.html, args.noteId, key));
+      return;
+    }
+    if (req.url === '/ping') { res.writeHead(200); res.end('DéliNote share'); return; }
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('Lien expiré ou clé invalide.');
+  });
+  return new Promise<{ url: string; urls: string[]; key: string; port: number; expiresAt: number } | null>((resolve) => {
+    server.listen(0, '0.0.0.0', () => {
+      const address = server.address();
+      if (!address || typeof address === 'string') { server.close(); resolve(null); return; }
+      const port = address.port;
+      const ips = getLocalIPs();
+      const primary = ips[0] || '127.0.0.1';
+      const url = `http://${primary}:${port}/s/${key}`;
+      const urls = ips.map((ip) => `http://${ip}:${port}/s/${key}`);
+      const timer = setTimeout(() => stopShareSession(key), SHARE_TTL_MS);
+      shareSessions.set(key, {
+        key, noteId: args.noteId, title: args.title, html: args.html, text: args.text,
+        startedAt: Date.now(), server, port, timer,
+      });
+      resolve({ url, urls, key, port, expiresAt: Date.now() + SHARE_TTL_MS });
+    });
+    server.on('error', () => resolve(null));
+  });
+}
+
+function stopShareSession(key: string): void {
+  const s = shareSessions.get(key);
+  if (!s) return;
+  clearTimeout(s.timer);
+  try { s.server.close(); } catch { /* ignore */ }
+  shareSessions.delete(key);
+}
+
+function listShareSessions() {
+  return Array.from(shareSessions.values()).map((s) => ({
+    key: s.key, noteId: s.noteId, title: s.title,
+    port: s.port, expiresAt: s.startedAt + SHARE_TTL_MS,
+  }));
 }

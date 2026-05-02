@@ -1,149 +1,258 @@
-import { useEffect, useState } from 'react';
-import { QrCode, X, Copy, Download, Eye, EyeOff } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { QrCode, X, Copy, Loader2, ExternalLink, Wifi, ShieldAlert, Power } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useStore } from '../store';
+import { generateHTML } from '@tiptap/html';
+import { buildExtensions } from '../editorExtensions';
+import { useSettings } from '../settings';
 
 /**
- * QR Share — generates a QR code containing the open note's text content,
- * shown in a modal so a friend can scan with their phone camera.
+ * QR Share — local-network sharing.
  *
- * Privacy guarantees:
- *   - Everything stays on your machine. No upload, no server, no cloud.
- *   - The QR encodes the raw note text — anyone who scans it sees the text.
- *     If your note has secrets, don't share its QR (a hint reminds the user).
+ * Spins up an HTTP server in the main process bound to 0.0.0.0:<random>,
+ * then encodes a URL like `http://<your-LAN-ip>:<port>/s/<key>` into a QR.
+ * Anyone on the same Wi-Fi who scans the QR opens the note in their phone
+ * browser instantly — no app, no account, no cloud round-trip.
  *
- * Implementation notes:
- *   - QR codes have a hard size limit (~2-3 KB of UTF-8 in error-correction L
- *     mode). Long notes are truncated with a warning + a copy-to-clipboard
- *     fallback so you can paste the full text into another channel.
- *   - The QR is generated client-side via the `qrcode` npm package (pure JS,
- *     no network). The result is a data URL we render in an <img>.
+ * The server auto-stops after 1 hour, or when the user clicks « Arrêter
+ * le partage » in this dialog. The render layer renders the note to HTML
+ * locally before sending it over IPC, so the main process never has to
+ * touch Tiptap.
+ *
+ * Caveats kept honest in the UI:
+ *   - Both devices must be on the same Wi-Fi
+ *   - A firewall may block the port — we surface the failure case
+ *   - Read-only for now: edits made on the phone don't sync back
  */
 
-const MAX_QR_BYTES = 2200; // safe ceiling for level-L QR with UTF-8 chars
+type ShareStatus =
+  | { kind: 'idle' }
+  | { kind: 'starting' }
+  | { kind: 'running'; url: string; urls: string[]; key: string; port: number; expiresAt: number; qr: string }
+  | { kind: 'error'; message: string };
 
 export default function QrShare({ onClose }: { onClose: () => void }) {
   const current = useStore((s) => s.current);
   const toast = useStore((s) => s.toast);
-  const [dataUrl, setDataUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [showText, setShowText] = useState(false);
+  const settings = useSettings((s) => s.settings);
+  const [status, setStatus] = useState<ShareStatus>({ kind: 'idle' });
 
-  const fullText = current ? `${current.title || 'Sans titre'}\n\n${current.text || ''}`.trim() : '';
-  const bytes = new TextEncoder().encode(fullText).length;
-  const truncated = bytes > MAX_QR_BYTES;
-  const encoded = truncated
-    ? trimToBytes(fullText, MAX_QR_BYTES - 30) + '\n\n[…tronqué pour le QR]'
-    : fullText;
+  const extensions = useMemo(() => buildExtensions(settings), [settings]);
 
+  async function startShare() {
+    if (!current) return;
+    setStatus({ kind: 'starting' });
+    try {
+      // Render the note to standalone HTML in the renderer (where we have
+      // the Tiptap extensions) before handing it to the main process.
+      let html = '';
+      try {
+        const json = JSON.parse(current.content || '{"type":"doc","content":[]}');
+        html = generateHTML(json, extensions);
+      } catch {
+        html = `<pre>${(current.text || '').replace(/[<>&]/g, (c) =>
+          ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' } as any)[c])}</pre>`;
+      }
+      const r = await (window as any).nv.shareStart({
+        noteId: current.id,
+        title: current.title || 'Sans titre',
+        html,
+        text: current.text || '',
+      });
+      if (!r) {
+        setStatus({ kind: 'error', message: 'Impossible de démarrer le serveur (port occupé ou réseau indisponible).' });
+        return;
+      }
+      const qr = await QRCode.toDataURL(r.url, {
+        errorCorrectionLevel: 'M',
+        margin: 2,
+        width: 360,
+        color: { dark: '#1B2330', light: '#FFFFFF' },
+      });
+      setStatus({ kind: 'running', ...r, qr });
+    } catch (e: any) {
+      setStatus({ kind: 'error', message: String(e?.message ?? e) });
+    }
+  }
+
+  async function stopShare() {
+    if (status.kind !== 'running') return;
+    try { await (window as any).nv.shareStop(status.key); } catch { /* ignore */ }
+    setStatus({ kind: 'idle' });
+  }
+
+  // Stop the share when the dialog closes (don't leave a server running).
   useEffect(() => {
-    if (!current || !encoded) return;
-    let alive = true;
-    QRCode.toDataURL(encoded, {
-      errorCorrectionLevel: 'L',
-      margin: 2,
-      width: 360,
-      color: { dark: '#1B2330', light: '#FFFFFF' },
-    })
-      .then((url) => { if (alive) { setDataUrl(url); setError(null); } })
-      .catch((e) => { if (alive) setError(String(e)); });
-    return () => { alive = false; };
-  }, [encoded, current?.id]);
+    return () => {
+      if (status.kind === 'running') {
+        void (window as any).nv.shareStop(status.key);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!current) {
     return (
       <Panel onClose={onClose}>
-        <div className="text-sm theme-muted text-center py-8">
+        <Header onClose={onClose} title="Partage QR" />
+        <div className="text-sm theme-muted text-center py-8 px-6">
           Ouvre une note avant de la partager.
         </div>
       </Panel>
     );
   }
 
-  function copyText() {
-    navigator.clipboard.writeText(fullText)
-      .then(() => toast('success', 'Texte de la note copié'))
-      .catch(() => toast('error', 'Impossible de copier'));
-  }
-
-  function downloadQr() {
-    if (!dataUrl) return;
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = `qr-${(current?.title || 'note').replace(/[^a-z0-9]+/gi, '-').slice(0, 40)}.png`;
-    a.click();
-  }
-
   return (
     <Panel onClose={onClose}>
-      <div className="px-4 py-3 border-b theme-border-soft flex items-center gap-2">
-        <QrCode size={16} className="theme-accent" />
-        <h3 className="text-sm font-semibold theme-text flex-1">Partage QR — {current.title || 'Sans titre'}</h3>
-        <button onClick={onClose} className="theme-muted hover:theme-text p-1 rounded">
-          <X size={14} />
+      <Header onClose={onClose} title={`Partage QR — ${current.title || 'Sans titre'}`} />
+
+      {status.kind === 'idle' && (
+        <div className="px-5 py-6 flex flex-col items-center gap-4">
+          <div className="w-16 h-16 rounded-full theme-accent-bg-soft flex items-center justify-center">
+            <Wifi size={28} className="theme-accent" />
+          </div>
+          <p className="text-sm theme-text text-center max-w-sm leading-relaxed">
+            Ton téléphone (ou celui d&apos;un ami) doit être sur le <strong>même réseau Wi-Fi</strong> que ton ordi.
+            Un mini-serveur va se lancer sur ton ordi, qui servira cette note pendant <strong>1 heure</strong>.
+          </p>
+          <p className="text-xs theme-muted text-center max-w-sm leading-relaxed">
+            🔒 Aucun cloud, aucun compte. Le contenu reste sur ton réseau local.
+          </p>
+          <button
+            onClick={() => void startShare()}
+            className="text-sm px-4 py-2 rounded-lg theme-accent-bg text-white hover:opacity-90 inline-flex items-center gap-2 mt-2"
+          >
+            <Power size={14} /> Lancer le partage
+          </button>
+          <p className="text-[11px] theme-muted text-center max-w-sm">
+            ⚠️ Si Windows demande l&apos;autorisation pare-feu, choisis « Réseau privé ». Sans ça, tes appareils ne pourront pas joindre le serveur.
+          </p>
+        </div>
+      )}
+
+      {status.kind === 'starting' && (
+        <div className="px-5 py-12 flex flex-col items-center gap-3 text-sm theme-muted">
+          <Loader2 size={20} className="animate-spin theme-accent" />
+          Démarrage du serveur local…
+        </div>
+      )}
+
+      {status.kind === 'error' && (
+        <div className="px-5 py-6 text-sm">
+          <div className="flex items-center gap-2 text-red-500 font-semibold mb-2">
+            <ShieldAlert size={16} /> Échec
+          </div>
+          <p className="theme-muted text-xs leading-relaxed">{status.message}</p>
+          <button
+            onClick={() => void startShare()}
+            className="mt-4 text-xs px-3 py-1.5 rounded theme-input hover:theme-hover"
+          >
+            Réessayer
+          </button>
+        </div>
+      )}
+
+      {status.kind === 'running' && (
+        <RunningView
+          url={status.url}
+          urls={status.urls}
+          expiresAt={status.expiresAt}
+          qr={status.qr}
+          onCopy={() => {
+            navigator.clipboard.writeText(status.url)
+              .then(() => toast('success', 'URL copiée'))
+              .catch(() => toast('error', 'Impossible de copier'));
+          }}
+          onOpen={() => (window as any).nv?.openExternal?.(status.url)}
+          onStop={() => void stopShare()}
+        />
+      )}
+
+      <div className="px-4 py-3 border-t theme-border-soft text-[11px] theme-muted">
+        Lecture seule : pour l&apos;instant, les modifs faites sur le téléphone ne reviennent pas vers ta note.
+        La collaboration en temps réel est dans la roadmap.
+      </div>
+    </Panel>
+  );
+}
+
+function RunningView({
+  url, urls, expiresAt, qr, onCopy, onOpen, onStop,
+}: {
+  url: string;
+  urls: string[];
+  expiresAt: number;
+  qr: string;
+  onCopy: () => void;
+  onOpen: () => void;
+  onStop: () => void;
+}) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const remainingMs = Math.max(0, expiresAt - now);
+  const min = Math.floor(remainingMs / 60000);
+  const sec = Math.floor((remainingMs % 60000) / 1000);
+
+  return (
+    <div className="px-5 py-5 flex flex-col items-center gap-3">
+      <div className="rounded-2xl shadow-lg p-3 bg-white">
+        <img src={qr} alt="QR code de partage" className="block w-[260px] h-[260px]" />
+      </div>
+      <p className="text-sm theme-text text-center max-w-sm leading-relaxed">
+        Scanne avec ton téléphone (appareil photo).
+      </p>
+      <div className="text-[10px] theme-muted font-mono text-center break-all px-4">{url}</div>
+      {urls.length > 1 && (
+        <details className="text-[11px] theme-muted">
+          <summary className="cursor-pointer hover:theme-text">Autres adresses ({urls.length - 1})</summary>
+          <ul className="mt-1 space-y-0.5">
+            {urls.filter((u) => u !== url).map((u) => (
+              <li key={u} className="font-mono">{u}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      <div className="flex flex-wrap items-center justify-center gap-2 mt-1">
+        <button
+          onClick={onCopy}
+          className="text-xs px-3 py-1.5 rounded-lg theme-input hover:theme-hover inline-flex items-center gap-1.5"
+        >
+          <Copy size={12} /> Copier le lien
+        </button>
+        <button
+          onClick={onOpen}
+          className="text-xs px-3 py-1.5 rounded-lg theme-input hover:theme-hover inline-flex items-center gap-1.5"
+        >
+          <ExternalLink size={12} /> Ouvrir ici
+        </button>
+        <button
+          onClick={onStop}
+          className="text-xs px-3 py-1.5 rounded-lg bg-red-500/15 text-red-400 hover:bg-red-500/25 inline-flex items-center gap-1.5"
+        >
+          <Power size={12} /> Arrêter
         </button>
       </div>
 
-      <div className="px-4 py-5 flex flex-col items-center gap-4">
-        {error && (
-          <div className="text-xs text-red-400 text-center">
-            Erreur de génération : {error}
-          </div>
-        )}
-
-        {dataUrl && (
-          <div className="rounded-2xl shadow-lg p-3 bg-white">
-            <img src={dataUrl} alt="QR code de la note" className="block w-[280px] h-[280px]" />
-          </div>
-        )}
-
-        <p className="text-xs theme-muted text-center max-w-sm leading-relaxed">
-          Demande à ton ami de scanner ce QR avec son téléphone (appareil photo,
-          ou n&apos;importe quel scanner QR). Le texte s&apos;affichera directement —
-          aucun compte, aucun serveur, aucun cloud n&apos;est impliqué.
-        </p>
-
-        {truncated && (
-          <div className="text-xs px-3 py-2 rounded theme-card-soft border theme-border-soft text-center max-w-sm">
-            ⚠️ Cette note dépasse la limite d&apos;un QR ({(bytes / 1024).toFixed(1)} ko).
-            Le QR contient le début ; utilise « Copier tout le texte » pour le reste.
-          </div>
-        )}
-
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <button
-            onClick={copyText}
-            className="text-xs px-3 py-1.5 rounded-lg theme-input hover:theme-hover inline-flex items-center gap-1.5"
-          >
-            <Copy size={12} /> Copier tout le texte
-          </button>
-          <button
-            onClick={downloadQr}
-            disabled={!dataUrl}
-            className="text-xs px-3 py-1.5 rounded-lg theme-input hover:theme-hover inline-flex items-center gap-1.5 disabled:opacity-40"
-          >
-            <Download size={12} /> Télécharger le QR
-          </button>
-          <button
-            onClick={() => setShowText(!showText)}
-            className="text-xs px-3 py-1.5 rounded-lg theme-input hover:theme-hover inline-flex items-center gap-1.5"
-          >
-            {showText ? <><EyeOff size={12} /> Cacher le texte</> : <><Eye size={12} /> Voir le texte</>}
-          </button>
-        </div>
-
-        {showText && (
-          <pre className="text-[11px] theme-muted whitespace-pre-wrap bg-black/5 dark:bg-white/5 rounded p-3 max-h-40 overflow-y-auto w-full">
-            {encoded}
-          </pre>
-        )}
+      <div className="text-[11px] theme-muted tabular-nums mt-1">
+        Expire dans <span className="font-bold theme-text">{String(min).padStart(2, '0')}:{String(sec).padStart(2, '0')}</span>
       </div>
+    </div>
+  );
+}
 
-      <div className="px-4 py-3 border-t theme-border-soft text-[11px] theme-muted">
-        🔒 Confidentialité : la note est encodée dans le QR ci-dessus. N&apos;importe qui qui le scanne pourra lire le contenu.
-        Ne partage pas ce QR si la note contient des secrets.
-      </div>
-    </Panel>
+function Header({ title, onClose }: { title: string; onClose: () => void }) {
+  return (
+    <div className="px-4 py-3 border-b theme-border-soft flex items-center gap-2">
+      <QrCode size={16} className="theme-accent" />
+      <h3 className="text-sm font-semibold theme-text flex-1 truncate">{title}</h3>
+      <button onClick={onClose} className="theme-muted hover:theme-text p-1 rounded">
+        <X size={14} />
+      </button>
+    </div>
   );
 }
 
@@ -164,17 +273,4 @@ function Panel({ children, onClose }: { children: React.ReactNode; onClose: () =
       </div>
     </div>
   );
-}
-
-/** Trim a UTF-8 string so its byte length stays ≤ max (without breaking chars). */
-function trimToBytes(s: string, max: number): string {
-  const enc = new TextEncoder();
-  if (enc.encode(s).length <= max) return s;
-  let lo = 0, hi = s.length;
-  while (lo < hi) {
-    const mid = (lo + hi + 1) >>> 1;
-    if (enc.encode(s.slice(0, mid)).length <= max) lo = mid;
-    else hi = mid - 1;
-  }
-  return s.slice(0, lo);
 }

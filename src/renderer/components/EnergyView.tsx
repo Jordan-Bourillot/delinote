@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { BatteryCharging, X, BatteryFull, BatteryMedium, BatteryLow, ArrowLeft } from 'lucide-react';
+import { BatteryCharging, X, BatteryFull, BatteryMedium, BatteryLow, ArrowLeft, Bell, CalendarDays } from 'lucide-react';
 import { useStore } from '../store';
-import type { Reminder } from '../types';
+import type { Reminder, CalendarEvent } from '../types';
 
 /**
  * Anti-calendar « Énergie » — three lanes (high / medium / low) instead of
@@ -18,10 +18,32 @@ import type { Reminder } from '../types';
 type Energy = 'high' | 'med' | 'low' | 'none';
 type Map = Record<string, Energy>;
 
+/** Single source of truth for "things you can place on the energy board". */
+type Task = {
+  id: string;            // prefixed with kind: "reminder:..." or "calendar:..."
+  kind: 'reminder' | 'calendar';
+  title: string;
+  due: number;           // ms epoch (calendar events: 12:00 if all-day)
+  rawId: string;         // underlying id (without prefix) for back-references
+};
+
 const STORAGE_KEY = 'delinote.energy.assignments.v1';
 
 function loadMap(): Map { try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; } }
 function saveMap(m: Map) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(m)); } catch { /* ignore */ } }
+
+function reminderToTask(r: Reminder): Task {
+  return { id: `reminder:${r.id}`, kind: 'reminder', title: r.title, due: r.due, rawId: r.id };
+}
+
+function calendarEventToTask(e: CalendarEvent): Task {
+  // Compose a real Date from "date" (YYYY-MM-DD) + optional "time" (HH:MM)
+  const [y, m, d] = e.date.split('-').map(Number);
+  let hours = 12, minutes = 0;
+  if (e.time) [hours, minutes] = e.time.split(':').map(Number);
+  const dt = new Date(y, (m ?? 1) - 1, d ?? 1, hours, minutes, 0, 0);
+  return { id: `calendar:${e.id}`, kind: 'calendar', title: e.title, due: dt.getTime(), rawId: e.id };
+}
 
 const LANES: { key: Exclude<Energy, 'none'>; label: string; sub: string; icon: React.ReactNode; color: string }[] = [
   { key: 'high', label: 'Haute énergie', sub: 'concentration · création · décisions', icon: <BatteryFull size={16} />, color: '#22c55e' },
@@ -30,7 +52,7 @@ const LANES: { key: Exclude<Energy, 'none'>; label: string; sub: string; icon: R
 ];
 
 export default function EnergyView({ onClose }: { onClose: () => void }) {
-  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [map, setMap] = useState<Map>(loadMap);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [hoverLane, setHoverLane] = useState<Energy | null>(null);
@@ -39,8 +61,23 @@ export default function EnergyView({ onClose }: { onClose: () => void }) {
     let alive = true;
     (async () => {
       try {
-        const list = await window.nv.listReminders();
-        if (alive) setReminders(list.filter((r) => !r.done));
+        const [reminders, events] = await Promise.all([
+          window.nv.listReminders(),
+          window.nv.listCalendarEvents(),
+        ]);
+        // Open reminders only; calendar events from today onward (older
+        // ones are noise — don't drown the board in past birthdays).
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const cutoff = todayStart.getTime();
+        const all: Task[] = [
+          ...reminders.filter((r) => !r.done).map(reminderToTask),
+          ...events
+            .map(calendarEventToTask)
+            .filter((t) => t.due >= cutoff),
+        ];
+        // Earliest first
+        all.sort((a, b) => a.due - b.due);
+        if (alive) setTasks(all);
       } catch { /* ignore */ }
     })();
     return () => { alive = false; };
@@ -62,7 +99,7 @@ export default function EnergyView({ onClose }: { onClose: () => void }) {
     }
   }
 
-  const inbox = reminders.filter((r) => (map[r.id] ?? 'none') === 'none');
+  const inbox = tasks.filter((task) => (map[task.id] ?? 'none') === 'none');
 
   return (
     <div className="fixed inset-0 z-[60] theme-bg flex flex-col">
@@ -94,10 +131,10 @@ export default function EnergyView({ onClose }: { onClose: () => void }) {
           >
             {inbox.length === 0 ? (
               <div className="text-xs theme-muted text-center py-8">
-                Tous tes rappels actifs sont déjà placés. Crée-en de nouveaux ou tire-les des voies →
+                Tout est placé. Crée des rappels ou des évènements de calendrier, ou tire-les des voies →
               </div>
             ) : (
-              inbox.map((r) => <Card key={r.id} reminder={r} onDragStart={() => setDraggingId(r.id)} />)
+              inbox.map((task) => <Card key={task.id} task={task} onDragStart={() => setDraggingId(task.id)} />)
             )}
           </div>
         </aside>
@@ -105,7 +142,7 @@ export default function EnergyView({ onClose }: { onClose: () => void }) {
         {/* Three lanes */}
         <div className="flex-1 flex">
           {LANES.map((lane) => {
-            const items = reminders.filter((r) => map[r.id] === lane.key);
+            const laneItems = tasks.filter((task) => map[task.id] === lane.key);
             return (
               <div
                 key={lane.key}
@@ -120,22 +157,22 @@ export default function EnergyView({ onClose }: { onClose: () => void }) {
                   <div className="flex items-center gap-2">
                     <span style={{ color: lane.color }}>{lane.icon}</span>
                     <span className="text-sm font-semibold theme-text">{lane.label}</span>
-                    <span className="text-[10px] theme-muted ml-auto">{items.length}</span>
+                    <span className="text-[10px] theme-muted ml-auto">{laneItems.length}</span>
                   </div>
                   <p className="text-[11px] theme-muted mt-1">{lane.sub}</p>
                 </div>
                 <div className="flex-1 overflow-y-auto p-3 space-y-2">
-                  {items.length === 0 ? (
+                  {laneItems.length === 0 ? (
                     <div className="text-xs theme-muted text-center py-12 italic">
                       Glisse ici les tâches qui demandent ce niveau d&apos;énergie.
                     </div>
                   ) : (
-                    items.map((r) => (
+                    laneItems.map((task) => (
                       <Card
-                        key={r.id}
-                        reminder={r}
-                        onDragStart={() => setDraggingId(r.id)}
-                        onSendBack={() => setEnergy(r.id, 'none')}
+                        key={task.id}
+                        task={task}
+                        onDragStart={() => setDraggingId(task.id)}
+                        onSendBack={() => setEnergy(task.id, 'none')}
                       />
                     ))
                   )}
@@ -150,13 +187,13 @@ export default function EnergyView({ onClose }: { onClose: () => void }) {
 }
 
 function Card({
-  reminder, onDragStart, onSendBack,
+  task, onDragStart, onSendBack,
 }: {
-  reminder: Reminder;
+  task: Task;
   onDragStart: () => void;
   onSendBack?: () => void;
 }) {
-  const due = new Date(reminder.due);
+  const due = new Date(task.due);
   return (
     <div
       draggable
@@ -164,9 +201,12 @@ function Card({
       className="theme-card border theme-border-soft rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:theme-hover transition shadow-sm group"
     >
       <div className="flex items-start gap-2">
+        <span className="theme-muted shrink-0 mt-0.5" title={task.kind === 'reminder' ? 'Rappel' : 'Évènement de calendrier'}>
+          {task.kind === 'reminder' ? <Bell size={12} /> : <CalendarDays size={12} />}
+        </span>
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium theme-text line-clamp-2 leading-snug">
-            {reminder.title}
+            {task.title}
           </div>
           <div className="text-[10px] theme-muted mt-0.5">
             {due.toLocaleString(navigator.language || 'fr-FR', {
