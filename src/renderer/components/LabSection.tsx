@@ -60,7 +60,7 @@ const FEATURES: FeatureDef[] = [
     icon: <Sparkles size={16} />,
     title: 'Murmure — l\'IA souffle des liens à voix basse',
     pitch: 'Une bulle discrète : « Tu as parlé de Marie il y a 2 semaines, lien vers son contact ? » Local-only, jamais d\'envoi vers le cloud.',
-    status: 'preview',
+    status: 'live',
     longDescription: 'Utiliserait des embeddings 100% locaux pour suggérer des liens pertinents (notes similaires, contacts mentionnés, anciennes notes oubliées qui parlent du même sujet). Aucune donnée n\'est envoyée hors de ton ordinateur.',
   },
   {
@@ -68,7 +68,7 @@ const FEATURES: FeatureDef[] = [
     icon: <Zap size={16} />,
     title: 'Flux — fini d\'organiser, écris',
     pitch: 'Un bouton « Flux 25 min » : tu écris en continu, l\'app découpe automatiquement en notes thématiques à la fin.',
-    status: 'preview',
+    status: 'live',
     longDescription: 'Mode brain-dump façon Pomodoro. Pendant 25 minutes tu écris sans réfléchir à l\'organisation. À la fin, l\'app utilise des embeddings pour détecter les changements de sujet et propose un découpage en notes distinctes que tu valides en un clic.',
   },
   {
@@ -76,7 +76,7 @@ const FEATURES: FeatureDef[] = [
     icon: <Mic size={16} />,
     title: 'Notes vocales spatiales',
     pitch: 'Tu parles → l\'app transcrit + capture l\'heure, le lieu, ton agenda du jour. Tu retrouves « ce que je pensais en sortant du dentiste mardi soir ».',
-    status: 'preview',
+    status: 'live',
     longDescription: 'Étend l\'enregistreur audio existant pour attacher : timestamp précis, événement de calendrier en cours, météo (optionnel via API locale), géolocalisation approximative (optionnel). Recherche par contexte plutôt que par mot-clé.',
   },
   {
@@ -84,7 +84,7 @@ const FEATURES: FeatureDef[] = [
     icon: <Layout size={16} />,
     title: 'Mood-boards — la note devient toile libre',
     pitch: 'Pinterest + Notion sans grille : colle images, captures, mots-clés, sons sur un canvas que tu organises à la souris.',
-    status: 'preview',
+    status: 'live',
     longDescription: 'Nouveau type de note où chaque élément (texte, image, audio, lien) est positionnable librement. Idéal pour brainstorming visuel, références, projets créatifs. Coexiste avec les notes texte classiques.',
   },
   {
@@ -92,7 +92,7 @@ const FEATURES: FeatureDef[] = [
     icon: <BatteryCharging size={16} />,
     title: 'Anti-calendrier « Énergie »',
     pitch: 'Au lieu de cases horaires, tu glisses tes tâches sur un slider haut → bas niveau d\'énergie. L\'app les place selon ton rythme historique.',
-    status: 'preview',
+    status: 'live',
     longDescription: 'Repense le calendrier autour de TON énergie réelle plutôt que des heures fixes. L\'app apprend de tes patterns (tu marques quand tu te sens « en forme » ou « fatigué ») et propose un placement intelligent.',
   },
   {
@@ -100,7 +100,7 @@ const FEATURES: FeatureDef[] = [
     icon: <QrCode size={16} />,
     title: 'Partage en direct via QR',
     pitch: 'Un QR à scanner → ton ami collabore sur ta note pendant 1h. Peer-to-peer chiffré, pas de compte, pas de cloud.',
-    status: 'preview',
+    status: 'live',
     longDescription: 'Pour réunions / brainstorms ad-hoc. Génère un QR code qui contient une clé éphémère + adresse réseau locale. La personne scanne, vous éditez la même note. Connexion P2P chiffrée, expire au bout d\'1h.',
   },
 ];

@@ -20,6 +20,11 @@ import BetaBanner from './components/BetaBanner';
 import UpdateBanner from './components/UpdateBanner';
 import FeedbackDialog from './components/FeedbackDialog';
 import UpdatingDialog from './components/UpdatingDialog';
+import MurmurePanel from './components/MurmurePanel';
+import FluxMode from './components/FluxMode';
+import EnergyView from './components/EnergyView';
+import MoodBoard from './components/MoodBoard';
+import QrShare from './components/QrShare';
 import MedicationStartupReminder, { alreadyDismissedToday } from './components/MedicationStartupReminder';
 import WhatsNewModal, { shouldShowWhatsNew } from './components/WhatsNew';
 import BetaExpired from './components/BetaExpired';
@@ -283,7 +288,29 @@ export default function App() {
   const [showMedReminder, setShowMedReminder] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [showUpdating, setShowUpdating] = useState(false);
+  const [showFlux, setShowFlux] = useState(false);
+  const [showEnergy, setShowEnergy] = useState(false);
+  const [showMoodBoard, setShowMoodBoard] = useState(false);
+  const [showQrShare, setShowQrShare] = useState(false);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
+
+  // Lab : open the various modes when the sidebar buttons fire.
+  useEffect(() => {
+    const onFlux = () => setShowFlux(true);
+    const onEnergy = () => setShowEnergy(true);
+    const onMood = () => setShowMoodBoard(true);
+    const onQr = () => setShowQrShare(true);
+    window.addEventListener('delinote:open-flux', onFlux);
+    window.addEventListener('delinote:open-energy', onEnergy);
+    window.addEventListener('delinote:open-moodboard', onMood);
+    window.addEventListener('delinote:open-qrshare', onQr);
+    return () => {
+      window.removeEventListener('delinote:open-flux', onFlux);
+      window.removeEventListener('delinote:open-energy', onEnergy);
+      window.removeEventListener('delinote:open-moodboard', onMood);
+      window.removeEventListener('delinote:open-qrshare', onQr);
+    };
+  }, []);
 
   // Show "What's new" popup once after each version upgrade.
   useEffect(() => {
@@ -482,6 +509,11 @@ export default function App() {
       {showMedReminder && !showOnboarding && !showTour && !showWhatsNew && (
         <MedicationStartupReminder onClose={() => setShowMedReminder(false)} />
       )}
+      {settings.labMurmure && <MurmurePanel />}
+      {showFlux && <FluxMode onClose={() => setShowFlux(false)} />}
+      {showEnergy && <EnergyView onClose={() => setShowEnergy(false)} />}
+      {showMoodBoard && <MoodBoard onClose={() => setShowMoodBoard(false)} />}
+      {showQrShare && <QrShare onClose={() => setShowQrShare(false)} />}
       </div>
     </div>
   );

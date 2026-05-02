@@ -14,7 +14,7 @@ import {
   Notebook as NotebookIcon, Tag as TagIcon, Trash2, Plus, Inbox, Pencil, X,
   Settings as SettingsIcon, Search, Sparkles, ChevronDown, ChevronRight,
   Clock, Pin, Layers, Sun, Moon, Pill, Calendar as CalendarIcon, CheckSquare, Paperclip, Bell,
-  Users, HelpCircle, CalendarDays,
+  Users, HelpCircle, CalendarDays, Zap, BatteryCharging, Layout,
 } from 'lucide-react';
 import type { ColorLabel, Notebook, Stack } from '../types';
 
@@ -171,6 +171,47 @@ export default function Sidebar() {
           <span className="flex-1 text-left">{t('sidebar.dailyNote')}</span>
           <kbd className="theme-kbd text-[9px]">Ctrl+⇧T</kbd>
         </button>
+        {settings.labFlux && (
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('delinote:open-flux'))}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs theme-muted hover:theme-hover hover:theme-text"
+            title="Mode Flux : 25 minutes d'écriture continue"
+          >
+            <Zap size={13} />
+            <span className="flex-1 text-left">Mode Flux</span>
+            <span className="text-[9px] theme-accent-bg-soft theme-accent px-1 rounded">25 min</span>
+          </button>
+        )}
+        {settings.labEnergyCalendar && (
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('delinote:open-energy'))}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs theme-muted hover:theme-hover hover:theme-text"
+            title="Anti-calendrier énergie"
+          >
+            <BatteryCharging size={13} />
+            <span className="flex-1 text-left">Énergie</span>
+          </button>
+        )}
+        {settings.labMoodboard && (
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('delinote:open-moodboard'))}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs theme-muted hover:theme-hover hover:theme-text"
+            title="Mood-board libre"
+          >
+            <Layout size={13} />
+            <span className="flex-1 text-left">Mood-board</span>
+          </button>
+        )}
+        {settings.labQrShare && (
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('delinote:open-qrshare'))}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs theme-muted hover:theme-hover hover:theme-text"
+            title="Partager une note via QR"
+          >
+            <span className="text-[13px]">📱</span>
+            <span className="flex-1 text-left">Partage QR</span>
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto py-2">

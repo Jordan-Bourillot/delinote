@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Mic, Square, Trash2, Save, X, Wand2, Loader2, Copy } from 'lucide-react';
+import { Mic, Square, Trash2, Save, X, Wand2, Loader2, Copy, MapPin } from 'lucide-react';
 import { useT } from '../i18n';
 import { useStore } from '../store';
+import { useSettings } from '../settings';
 import { transcribeBlob, type ProgressEvent } from '../asr';
+import type { CalendarEvent } from '../types';
 
 export function AudioRecorder({ noteId, onAttach, onTranscript, onClose }: {
   noteId: string;
@@ -12,7 +14,9 @@ export function AudioRecorder({ noteId, onAttach, onTranscript, onClose }: {
 }) {
   const t = useT();
   const toast = useStore((s) => s.toast);
+  const settings = useSettings((s) => s.settings);
   const [recording, setRecording] = useState(false);
+  const [currentEvent, setCurrentEvent] = useState<CalendarEvent | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [blob, setBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -31,6 +35,55 @@ export function AudioRecorder({ noteId, onAttach, onTranscript, onClose }: {
     if (tickRef.current) clearInterval(tickRef.current);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   }, []);
+
+  // Vocal spatial : look up an in-progress calendar event ±2h around now so
+  // we can stamp the transcript with "pendant <Réunion>". Off when the lab
+  // toggle is disabled.
+  useEffect(() => {
+    if (!settings.labVocalSpatial) { setCurrentEvent(null); return; }
+    let alive = true;
+    (async () => {
+      try {
+        const events = await window.nv.listCalendarEvents();
+        if (!alive) return;
+        const now = new Date();
+        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        const candidates = events.filter((e) => {
+          if (e.date !== today) return false;
+          if (!e.time) return true; // all-day events count
+          const [h, m] = e.time.split(':').map(Number);
+          const evMin = h * 60 + m;
+          return Math.abs(evMin - nowMin) <= 120;
+        });
+        // Prefer the timed event closest to "now"; fall back to the first all-day.
+        candidates.sort((a, b) => {
+          const aIsTimed = !!a.time;
+          const bIsTimed = !!b.time;
+          if (aIsTimed !== bIsTimed) return aIsTimed ? -1 : 1;
+          if (!aIsTimed) return 0;
+          const da = Math.abs(toMin(a.time!) - nowMin);
+          const db = Math.abs(toMin(b.time!) - nowMin);
+          return da - db;
+        });
+        setCurrentEvent(candidates[0] ?? null);
+      } catch { /* ignore */ }
+    })();
+    return () => { alive = false; };
+  }, [settings.labVocalSpatial]);
+
+  function spatialContextLine(): string | null {
+    if (!settings.labVocalSpatial) return null;
+    const now = new Date();
+    const dateStr = now.toLocaleDateString(navigator.language || 'fr-FR', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    });
+    const timeStr = now.toLocaleTimeString(navigator.language || 'fr-FR', {
+      hour: '2-digit', minute: '2-digit',
+    });
+    const event = currentEvent ? ` — pendant « ${currentEvent.title} »` : '';
+    return `📍 ${dateStr} à ${timeStr}${event}`;
+  }
 
   async function start() {
     try {
@@ -79,7 +132,12 @@ export function AudioRecorder({ noteId, onAttach, onTranscript, onClose }: {
     const buf = await blob.arrayBuffer();
     const att = await window.nv.saveAttachment(noteId, filename, blob.type, buf);
     onAttach(att.filename, att.mime, att.size, att.id);
-    if (transcript && onTranscript) onTranscript(transcript);
+    if (onTranscript) {
+      const ctx = spatialContextLine();
+      const body = transcript || '';
+      const combined = ctx ? `${ctx}\n\n${body}` : body;
+      if (combined.trim()) onTranscript(combined);
+    }
     onClose();
   }
 
@@ -127,6 +185,20 @@ export function AudioRecorder({ noteId, onAttach, onTranscript, onClose }: {
 
         {previewUrl && (
           <audio controls src={previewUrl} className="w-full mb-3" />
+        )}
+
+        {settings.labVocalSpatial && (
+          <div className="mb-3 p-2.5 rounded-lg theme-accent-bg-soft border theme-border-soft text-[11px] theme-text flex items-start gap-2">
+            <MapPin size={12} className="theme-accent shrink-0 mt-0.5" />
+            <div>
+              <div className="font-semibold uppercase tracking-wider text-[9px] theme-muted">Contexte spatial</div>
+              {currentEvent ? (
+                <span>Pendant <strong>« {currentEvent.title} »</strong> · {new Date().toLocaleTimeString(navigator.language || 'fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+              ) : (
+                <span>{new Date().toLocaleString(navigator.language || 'fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</span>
+              )}
+            </div>
+          </div>
         )}
 
         {transcribing && (
@@ -226,4 +298,9 @@ function formatTime(ms: number): string {
   const s = Math.floor(ms / 1000);
   const m = Math.floor(s / 60);
   return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function toMin(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
 }
