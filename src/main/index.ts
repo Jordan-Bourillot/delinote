@@ -294,9 +294,10 @@ app.whenReady().then(async () => {
   ipcMain.handle('clipper:stop', () => stopClipperServer());
 
   // ----- LAN share IPC -----
-  ipcMain.handle('share:start', (_e, args: { noteId: string; title: string; html: string; text: string }) => startShareSession(args));
+  ipcMain.handle('share:start', (_e, args: { noteId: string; title: string; html: string; text: string; live?: boolean }) => startShareSession(args));
   ipcMain.handle('share:stop', (_e, key: string) => { stopShareSession(key); });
   ipcMain.handle('share:list', () => listShareSessions());
+  ipcMain.handle('share:host-update', (_e, args: { key: string; title: string; text: string }) => pushHostUpdate(args.key, args.title, args.text));
 
   // ----- Beta : feedback dialog confirmation -----
   // Appelé par le renderer quand l'utilisateur a fini avec FeedbackDialog
@@ -407,6 +408,13 @@ function startClipperServer() {
 // into a QR by the renderer. Visitors on the same Wi-Fi scan the QR and see
 // the note in their phone browser. Auto-shuts after SHARE_TTL_MS to bound
 // exposure. Multiple shares can run in parallel (one server per shared note).
+//
+// Two modes:
+//   - live=false : static HTML page (read-only).
+//   - live=true  : HTML page with embedded JS that bidirectionally syncs
+//                  the text/title with the host via SSE + POST. Peer edits
+//                  flow back to the renderer over IPC ('share:peer-update'),
+//                  host edits are pushed to all peers via SSE.
 const SHARE_TTL_MS = 60 * 60 * 1000; // 1 hour
 type ShareSession = {
   key: string;
@@ -414,12 +422,25 @@ type ShareSession = {
   title: string;
   html: string;
   text: string;
+  /** Plain-text version, monotonically incremented on every accepted update. */
+  version: number;
   startedAt: number;
   server: http.Server;
   port: number;
   timer: NodeJS.Timeout;
+  /** Active long-lived SSE subscribers (peers listening for live updates). */
+  sseClients: Set<http.ServerResponse>;
+  /** Live (read+write) vs static (read-only). */
+  live: boolean;
 };
 const shareSessions = new Map<string, ShareSession>();
+
+function broadcastSse(session: ShareSession, event: string, data: any) {
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const client of session.sseClients) {
+    try { client.write(payload); } catch { /* ignore broken pipes */ }
+  }
+}
 
 function getLocalIPs(): string[] {
   const nets = os.networkInterfaces();
@@ -438,18 +459,12 @@ function escapeHtml(s: string): string {
   } as any)[c]);
 }
 
-function shareLandingHtml(title: string, html: string, noteId: string, key: string): string {
-  return `<!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>${escapeHtml(title)} — DéliNote</title>
-<style>
+/** CSS shared by both static & live pages. */
+const SHARE_CSS = `
   :root { color-scheme: light dark; }
   html,body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;background:#FAF6EE;color:#1B2330;}
   @media (prefers-color-scheme: dark){html,body{background:#0D1418;color:#E5E7EB;}}
-  header{position:sticky;top:0;background:linear-gradient(180deg,#F37223,#E55E0E);color:#fff;padding:12px 16px;box-shadow:0 1px 4px rgba(0,0,0,.15);}
+  header{position:sticky;top:0;background:linear-gradient(180deg,#F37223,#E55E0E);color:#fff;padding:12px 16px;box-shadow:0 1px 4px rgba(0,0,0,.15);z-index:5}
   header h1{margin:0;font-size:1rem;font-weight:600;letter-spacing:-.01em}
   header small{display:block;opacity:.85;font-size:.7rem;margin-top:2px}
   main{max-width:680px;margin:0 auto;padding:18px 18px 80px}
@@ -463,7 +478,25 @@ function shareLandingHtml(title: string, html: string, noteId: string, key: stri
   footer{position:fixed;bottom:0;left:0;right:0;text-align:center;padding:8px;background:rgba(255,255,255,.85);backdrop-filter:blur(6px);font-size:.7rem;color:#666;border-top:1px solid rgba(0,0,0,.08)}
   @media(prefers-color-scheme: dark){footer{background:rgba(13,20,24,.85);color:#aaa;border-color:rgba(255,255,255,.08)}}
   a{color:#F37223;text-decoration:none}a:hover{text-decoration:underline}
-</style>
+  .live-title{font-size:1.5rem;font-weight:700;width:100%;border:0;background:transparent;color:inherit;outline:none;margin:0 0 12px;padding:4px 6px;border-radius:6px}
+  .live-title:focus{background:rgba(243,114,35,.08)}
+  .live-text{min-height:300px;border:1px solid rgba(0,0,0,.12);border-radius:8px;padding:14px;font-size:1rem;line-height:1.55;outline:none;white-space:pre-wrap;word-wrap:break-word;background:rgba(255,255,255,.5)}
+  @media(prefers-color-scheme: dark){.live-text{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.12)}}
+  .live-text:focus{box-shadow:0 0 0 2px rgba(243,114,35,.3)}
+  .live-status{font-size:.7rem;opacity:.65;margin-top:8px;display:flex;align-items:center;gap:6px}
+  .live-status .dot{width:6px;height:6px;border-radius:50%;background:#22c55e}
+  .live-status .dot.warn{background:#eab308}
+  .live-status .dot.err{background:#ef4444}
+`;
+
+function shareLandingHtmlStatic(title: string, html: string): string {
+  return `<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>${escapeHtml(title)} — DéliNote</title>
+<style>${SHARE_CSS}</style>
 </head>
 <body>
 <header>
@@ -476,7 +509,113 @@ function shareLandingHtml(title: string, html: string, noteId: string, key: stri
 </html>`;
 }
 
-function startShareSession(args: { noteId: string; title: string; html: string; text: string }): Promise<{ url: string; urls: string[]; key: string; port: number; expiresAt: number } | null> {
+/**
+ * Live HTML page. Includes a small inline JS client that:
+ *   - GETs /s/<key>/state for the initial title+text+version
+ *   - Subscribes to /s/<key>/events (SSE) for live updates
+ *   - Debounce-POSTs /s/<key>/update on local edits
+ *   - Resolves conflicts with last-write-wins (per-version sequencing)
+ *
+ * No imports, no CDN — keeps the "100% offline" promise.
+ */
+function shareLandingHtmlLive(title: string, key: string): string {
+  return `<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>${escapeHtml(title)} — DéliNote</title>
+<style>${SHARE_CSS}</style>
+</head>
+<body>
+<header>
+  <h1>Édition partagée — DéliNote</h1>
+  <small>Tes modifs et celles de l'autre côté se synchronisent en direct</small>
+</header>
+<main>
+  <input id="title" class="live-title" type="text" placeholder="Titre" autocomplete="off" />
+  <div id="text" class="live-text" contenteditable="plaintext-only" spellcheck="true"></div>
+  <div id="status" class="live-status"><span class="dot"></span><span id="status-text">Connexion…</span></div>
+</main>
+<footer>🔒 Connexion uniquement sur ton Wi-Fi. La session expire dans 1h.</footer>
+<script>
+(function(){
+  var KEY = ${JSON.stringify(key)};
+  var BASE = "/s/" + KEY;
+  var titleEl = document.getElementById('title');
+  var textEl  = document.getElementById('text');
+  var statusEl = document.getElementById('status');
+  var dotEl   = statusEl.querySelector('.dot');
+  var labelEl = document.getElementById('status-text');
+
+  var localVersion = 0;
+  var pending = null; // a setTimeout id for debounced posts
+  var lastSentText = null;
+  var lastSentTitle = null;
+  var ignoreNextEvent = false; // prevent echo right after our own POST
+
+  function setStatus(kind, msg){
+    dotEl.className = 'dot' + (kind === 'warn' ? ' warn' : kind === 'err' ? ' err' : '');
+    labelEl.textContent = msg;
+  }
+
+  function applyRemote(state){
+    if (state.version <= localVersion) return; // already seen
+    localVersion = state.version;
+    var sel = document.activeElement;
+    if (sel !== titleEl && titleEl.value !== state.title) titleEl.value = state.title;
+    if (sel !== textEl  && textEl.innerText !== state.text) textEl.innerText = state.text;
+    setStatus('ok', 'Synchronisé · v' + state.version);
+  }
+
+  function send(){
+    if (pending) { clearTimeout(pending); pending = null; }
+    var t = titleEl.value;
+    var x = textEl.innerText || '';
+    if (t === lastSentTitle && x === lastSentText) return;
+    lastSentTitle = t; lastSentText = x;
+    setStatus('warn', 'Envoi…');
+    fetch(BASE + '/update', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ title: t, text: x, baseVersion: localVersion, source: 'peer' })
+    }).then(function(r){ return r.json(); })
+      .then(function(j){ if (j && typeof j.version === 'number') { localVersion = j.version; setStatus('ok', 'Synchronisé · v' + j.version); }})
+      .catch(function(){ setStatus('err', 'Erreur d\\'envoi'); });
+  }
+
+  function scheduleSend(){
+    if (pending) clearTimeout(pending);
+    pending = setTimeout(send, 300);
+  }
+
+  // Initial state load
+  fetch(BASE + '/state').then(function(r){ return r.json(); }).then(function(s){
+    titleEl.value = s.title || '';
+    textEl.innerText = s.text || '';
+    localVersion = s.version || 0;
+    setStatus('ok', 'Prêt · v' + localVersion);
+  }).catch(function(){ setStatus('err', 'Connexion impossible'); });
+
+  // Listen for remote updates
+  try {
+    var es = new EventSource(BASE + '/events');
+    es.addEventListener('update', function(ev){
+      try { applyRemote(JSON.parse(ev.data)); } catch(e){}
+    });
+    es.addEventListener('end', function(){ setStatus('warn', 'Session terminée par l\\'hôte'); es.close(); });
+    es.onerror = function(){ setStatus('err', 'Connexion perdue · ré-essai…'); };
+  } catch(e) { setStatus('err', 'SSE non supporté'); }
+
+  titleEl.addEventListener('input', scheduleSend);
+  textEl.addEventListener('input', scheduleSend);
+})();
+</script>
+</body>
+</html>`;
+}
+
+function startShareSession(args: { noteId: string; title: string; html: string; text: string; live?: boolean }): Promise<{ url: string; urls: string[]; key: string; port: number; expiresAt: number; live: boolean } | null> {
   const key = (() => {
     // 6-char alphanumeric key (entropy ≈ 31 bits — fine for 1h ephemeral)
     const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -484,21 +623,86 @@ function startShareSession(args: { noteId: string; title: string; html: string; 
     for (let i = 0; i < 6; i++) s += alphabet[Math.floor(Math.random() * alphabet.length)];
     return s;
   })();
+  const live = !!args.live;
+
+  // Forward declaration: the request handler reads from `session`, but we
+  // create the session record only once `listen()` succeeds. Use a getter.
+  let sessionRef: ShareSession | null = null;
+
   const server = http.createServer((req, res) => {
     res.setHeader('Cache-Control', 'no-store');
-    if (req.method !== 'GET' || !req.url) {
-      res.writeHead(405); res.end(); return;
-    }
-    if (req.url === `/s/${key}` || req.url === `/s/${key}/`) {
+    if (!req.url) { res.writeHead(400); res.end(); return; }
+    const session = sessionRef;
+    if (!session) { res.writeHead(503); res.end(); return; }
+
+    // Static read-only landing page
+    if (req.method === 'GET' && (req.url === `/s/${key}` || req.url === `/s/${key}/`)) {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(shareLandingHtml(args.title, args.html, args.noteId, key));
+      res.end(session.live
+        ? shareLandingHtmlLive(session.title, key)
+        : shareLandingHtmlStatic(session.title, session.html));
       return;
     }
-    if (req.url === '/ping') { res.writeHead(200); res.end('DéliNote share'); return; }
+
+    // Live endpoints (only available when live=true)
+    if (session.live) {
+      if (req.method === 'GET' && req.url === `/s/${key}/state`) {
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ title: session.title, text: session.text, version: session.version }));
+        return;
+      }
+      if (req.method === 'GET' && req.url === `/s/${key}/events`) {
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+          'X-Accel-Buffering': 'no',
+        });
+        // Send initial state, then keep the connection open
+        res.write(`event: update\ndata: ${JSON.stringify({ title: session.title, text: session.text, version: session.version })}\n\n`);
+        session.sseClients.add(res);
+        // Keep-alive ping every 25s to avoid idle disconnects
+        const ka = setInterval(() => { try { res.write(':\n\n'); } catch { /* ignore */ } }, 25_000);
+        req.on('close', () => { clearInterval(ka); session.sseClients.delete(res); });
+        return;
+      }
+      if (req.method === 'POST' && req.url === `/s/${key}/update`) {
+        const chunks: Buffer[] = [];
+        req.on('data', (c) => chunks.push(c));
+        req.on('end', () => {
+          try {
+            const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+            const newTitle = typeof body.title === 'string' ? body.title.slice(0, 500) : session.title;
+            const newText = typeof body.text === 'string' ? body.text.slice(0, 200_000) : session.text;
+            const source = body.source === 'host' ? 'host' : 'peer';
+            session.title = newTitle;
+            session.text = newText;
+            session.version += 1;
+            const payload = { title: session.title, text: session.text, version: session.version };
+            broadcastSse(session, 'update', payload);
+            // Notify the host renderer when a peer edits (so the open note can
+            // mirror the change). We don't notify on host-originated updates
+            // to avoid loops.
+            if (source === 'peer' && mainWindow) {
+              try { mainWindow.webContents.send('share:peer-update', { key, ...payload, noteId: session.noteId }); } catch { /* ignore */ }
+            }
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+            res.end(JSON.stringify({ ok: true, version: session.version }));
+          } catch (e: any) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ ok: false, error: e?.message ?? 'invalid' }));
+          }
+        });
+        return;
+      }
+    }
+
+    if (req.method === 'GET' && req.url === '/ping') { res.writeHead(200); res.end('DéliNote share'); return; }
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('Lien expiré ou clé invalide.');
   });
-  return new Promise<{ url: string; urls: string[]; key: string; port: number; expiresAt: number } | null>((resolve) => {
+
+  return new Promise<{ url: string; urls: string[]; key: string; port: number; expiresAt: number; live: boolean } | null>((resolve) => {
     server.listen(0, '0.0.0.0', () => {
       const address = server.address();
       if (!address || typeof address === 'string') { server.close(); resolve(null); return; }
@@ -508,19 +712,43 @@ function startShareSession(args: { noteId: string; title: string; html: string; 
       const url = `http://${primary}:${port}/s/${key}`;
       const urls = ips.map((ip) => `http://${ip}:${port}/s/${key}`);
       const timer = setTimeout(() => stopShareSession(key), SHARE_TTL_MS);
-      shareSessions.set(key, {
+      const session: ShareSession = {
         key, noteId: args.noteId, title: args.title, html: args.html, text: args.text,
+        version: 1,
         startedAt: Date.now(), server, port, timer,
-      });
-      resolve({ url, urls, key, port, expiresAt: Date.now() + SHARE_TTL_MS });
+        sseClients: new Set(),
+        live,
+      };
+      shareSessions.set(key, session);
+      sessionRef = session;
+      resolve({ url, urls, key, port, expiresAt: Date.now() + SHARE_TTL_MS, live });
     });
     server.on('error', () => resolve(null));
   });
 }
 
+/** Host-originated update — pushes new title/text to peers without echoing
+ *  it back to the renderer. Returns the new version, or null if no session. */
+function pushHostUpdate(key: string, title: string, text: string): number | null {
+  const session = shareSessions.get(key);
+  if (!session) return null;
+  if (session.title === title && session.text === text) return session.version;
+  session.title = title;
+  session.text = text;
+  session.version += 1;
+  broadcastSse(session, 'update', { title, text, version: session.version });
+  return session.version;
+}
+
 function stopShareSession(key: string): void {
   const s = shareSessions.get(key);
   if (!s) return;
+  // Notify any subscribers that the session is over so their UI can react.
+  if (s.live) {
+    try { broadcastSse(s, 'end', { reason: 'host-closed' }); } catch { /* ignore */ }
+    for (const client of s.sseClients) { try { client.end(); } catch { /* ignore */ } }
+    s.sseClients.clear();
+  }
   clearTimeout(s.timer);
   try { s.server.close(); } catch { /* ignore */ }
   shareSessions.delete(key);

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { QrCode, X, Copy, Loader2, ExternalLink, Wifi, ShieldAlert, Power } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { QrCode, X, Copy, Loader2, ExternalLink, Wifi, ShieldAlert, Power, Eye, Edit3 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { useStore } from '../store';
 import { generateHTML } from '@tiptap/html';
@@ -9,42 +9,47 @@ import { useSettings } from '../settings';
 /**
  * QR Share — local-network sharing.
  *
- * Spins up an HTTP server in the main process bound to 0.0.0.0:<random>,
- * then encodes a URL like `http://<your-LAN-ip>:<port>/s/<key>` into a QR.
- * Anyone on the same Wi-Fi who scans the QR opens the note in their phone
- * browser instantly — no app, no account, no cloud round-trip.
- *
- * The server auto-stops after 1 hour, or when the user clicks « Arrêter
- * le partage » in this dialog. The render layer renders the note to HTML
- * locally before sending it over IPC, so the main process never has to
- * touch Tiptap.
+ * Two flavours:
+ *   1. Lecture seule  : the page is fully rendered HTML. Phone reads, can't write.
+ *   2. Mode live      : the page is a `contenteditable` that bidirectionally
+ *      syncs with the host via SSE (peer ⇐ host) and POST (peer ⇒ host).
+ *      Host edits in DéliNote → SSE pushes to phone(s). Phone edits → IPC
+ *      'share:peer-update' → applied to the open note via patchCurrent.
  *
  * Caveats kept honest in the UI:
  *   - Both devices must be on the same Wi-Fi
  *   - A firewall may block the port — we surface the failure case
- *   - Read-only for now: edits made on the phone don't sync back
+ *   - Live mode syncs PLAIN TEXT only — rich formatting from Tiptap isn't
+ *     transmitted over the live channel (the host editor still keeps its
+ *     formatting locally; peers see/edit a flattened view).
  */
 
 type ShareStatus =
   | { kind: 'idle' }
   | { kind: 'starting' }
-  | { kind: 'running'; url: string; urls: string[]; key: string; port: number; expiresAt: number; qr: string }
+  | { kind: 'running'; url: string; urls: string[]; key: string; port: number; expiresAt: number; qr: string; live: boolean }
   | { kind: 'error'; message: string };
 
 export default function QrShare({ onClose }: { onClose: () => void }) {
   const current = useStore((s) => s.current);
+  const patchCurrent = useStore((s) => s.patchCurrent);
+  const flushSave = useStore((s) => s.flushSave);
   const toast = useStore((s) => s.toast);
   const settings = useSettings((s) => s.settings);
   const [status, setStatus] = useState<ShareStatus>({ kind: 'idle' });
+  const [mode, setMode] = useState<'readonly' | 'live'>('readonly');
 
   const extensions = useMemo(() => buildExtensions(settings), [settings]);
 
-  async function startShare() {
+  // Track the latest version we know about (per-session) to ignore stale echoes.
+  const lastVersionRef = useRef(0);
+  // Suppress the next host→peer push when we know the change came FROM the peer.
+  const suppressNextPushRef = useRef(false);
+
+  async function startShare(live: boolean) {
     if (!current) return;
     setStatus({ kind: 'starting' });
     try {
-      // Render the note to standalone HTML in the renderer (where we have
-      // the Tiptap extensions) before handing it to the main process.
       let html = '';
       try {
         const json = JSON.parse(current.content || '{"type":"doc","content":[]}');
@@ -58,6 +63,7 @@ export default function QrShare({ onClose }: { onClose: () => void }) {
         title: current.title || 'Sans titre',
         html,
         text: current.text || '',
+        live,
       });
       if (!r) {
         setStatus({ kind: 'error', message: 'Impossible de démarrer le serveur (port occupé ou réseau indisponible).' });
@@ -69,7 +75,8 @@ export default function QrShare({ onClose }: { onClose: () => void }) {
         width: 360,
         color: { dark: '#1B2330', light: '#FFFFFF' },
       });
-      setStatus({ kind: 'running', ...r, qr });
+      lastVersionRef.current = 1;
+      setStatus({ kind: 'running', ...r, qr, live });
     } catch (e: any) {
       setStatus({ kind: 'error', message: String(e?.message ?? e) });
     }
@@ -91,6 +98,44 @@ export default function QrShare({ onClose }: { onClose: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // === LIVE MODE ===
+  // Listen for peer updates → apply to the current note.
+  useEffect(() => {
+    if (status.kind !== 'running' || !status.live) return;
+    const off = (window as any).nv.onSharePeerUpdate((info: any) => {
+      if (info.key !== status.key) return;
+      if (info.version <= lastVersionRef.current) return;
+      lastVersionRef.current = info.version;
+      // Apply title + text to the current note. We don't touch `content`
+      // (Tiptap JSON) directly because plain-text sync would otherwise wipe
+      // formatting; instead we update title + text (search index) only.
+      // The user can still edit the rich content normally; live sync only
+      // covers raw text.
+      suppressNextPushRef.current = true;
+      patchCurrent({ title: info.title, text: info.text });
+    });
+    return () => { try { off?.(); } catch { /* ignore */ } };
+  }, [status, patchCurrent]);
+
+  // Push host-side title/text changes to peers (debounced).
+  useEffect(() => {
+    if (status.kind !== 'running' || !status.live || !current) return;
+    if (suppressNextPushRef.current) {
+      suppressNextPushRef.current = false;
+      return;
+    }
+    const id = setTimeout(() => {
+      void (window as any).nv.shareHostUpdate({
+        key: status.key,
+        title: current.title || 'Sans titre',
+        text: current.text || '',
+      }).then((v: number | null) => {
+        if (typeof v === 'number') lastVersionRef.current = v;
+      }).catch(() => { /* ignore */ });
+    }, 350);
+    return () => clearTimeout(id);
+  }, [status, current?.title, current?.text]);
+
   if (!current) {
     return (
       <Panel onClose={onClose}>
@@ -104,28 +149,55 @@ export default function QrShare({ onClose }: { onClose: () => void }) {
 
   return (
     <Panel onClose={onClose}>
-      <Header onClose={onClose} title={`Partage QR — ${current.title || 'Sans titre'}`} />
+      <Header
+        onClose={onClose}
+        title={`Partage QR — ${current.title || 'Sans titre'}`}
+      />
 
       {status.kind === 'idle' && (
-        <div className="px-5 py-6 flex flex-col items-center gap-4">
+        <div className="px-5 py-5 flex flex-col items-center gap-4">
           <div className="w-16 h-16 rounded-full theme-accent-bg-soft flex items-center justify-center">
             <Wifi size={28} className="theme-accent" />
           </div>
+
+          <div className="w-full theme-input rounded-lg p-1 grid grid-cols-2 gap-1">
+            <ModeButton
+              active={mode === 'readonly'}
+              onClick={() => setMode('readonly')}
+              icon={<Eye size={14} />}
+              label="Lecture seule"
+              hint="Le téléphone affiche, ne modifie pas"
+            />
+            <ModeButton
+              active={mode === 'live'}
+              onClick={() => setMode('live')}
+              icon={<Edit3 size={14} />}
+              label="Mode live"
+              hint="Édition synchronisée des deux côtés"
+            />
+          </div>
+
           <p className="text-sm theme-text text-center max-w-sm leading-relaxed">
-            Ton téléphone (ou celui d&apos;un ami) doit être sur le <strong>même réseau Wi-Fi</strong> que ton ordi.
-            Un mini-serveur va se lancer sur ton ordi, qui servira cette note pendant <strong>1 heure</strong>.
+            {mode === 'live' ? (
+              <>Le téléphone et ton ordi <strong>partagent la même note en direct</strong>.
+              Tape ici → ton ami voit. Il tape là-bas → tu vois.</>
+            ) : (
+              <>Ton ami voit la note dans son navigateur, version figée et formatée.
+              Aucune modif possible côté téléphone.</>
+            )}
           </p>
           <p className="text-xs theme-muted text-center max-w-sm leading-relaxed">
-            🔒 Aucun cloud, aucun compte. Le contenu reste sur ton réseau local.
+            🔒 Tout reste sur ton réseau Wi-Fi local. Aucun cloud, aucun compte.
           </p>
+
           <button
-            onClick={() => void startShare()}
-            className="text-sm px-4 py-2 rounded-lg theme-accent-bg text-white hover:opacity-90 inline-flex items-center gap-2 mt-2"
+            onClick={() => void startShare(mode === 'live')}
+            className="text-sm px-4 py-2 rounded-lg theme-accent-bg text-white hover:opacity-90 inline-flex items-center gap-2 mt-1"
           >
             <Power size={14} /> Lancer le partage
           </button>
           <p className="text-[11px] theme-muted text-center max-w-sm">
-            ⚠️ Si Windows demande l&apos;autorisation pare-feu, choisis « Réseau privé ». Sans ça, tes appareils ne pourront pas joindre le serveur.
+            ⚠️ Si Windows demande l&apos;autorisation pare-feu, choisis « Réseau privé ».
           </p>
         </div>
       )}
@@ -144,7 +216,7 @@ export default function QrShare({ onClose }: { onClose: () => void }) {
           </div>
           <p className="theme-muted text-xs leading-relaxed">{status.message}</p>
           <button
-            onClick={() => void startShare()}
+            onClick={() => void startShare(mode === 'live')}
             className="mt-4 text-xs px-3 py-1.5 rounded theme-input hover:theme-hover"
           >
             Réessayer
@@ -158,6 +230,7 @@ export default function QrShare({ onClose }: { onClose: () => void }) {
           urls={status.urls}
           expiresAt={status.expiresAt}
           qr={status.qr}
+          live={status.live}
           onCopy={() => {
             navigator.clipboard.writeText(status.url)
               .then(() => toast('success', 'URL copiée'))
@@ -169,20 +242,48 @@ export default function QrShare({ onClose }: { onClose: () => void }) {
       )}
 
       <div className="px-4 py-3 border-t theme-border-soft text-[11px] theme-muted">
-        Lecture seule : pour l&apos;instant, les modifs faites sur le téléphone ne reviennent pas vers ta note.
-        La collaboration en temps réel est dans la roadmap.
+        {status.kind === 'running' && status.live ? (
+          <>🔄 <strong>Mode live</strong> · Le texte se synchronise des deux côtés. Le formatage Tiptap reste local — seuls le titre et le texte brut sont partagés.</>
+        ) : status.kind === 'running' ? (
+          <>👁 Mode lecture seule. Pour synchroniser dans les deux sens, arrête et relance en « Mode live ».</>
+        ) : (
+          <>Le mode live partage le texte brut + le titre. Pour de l&apos;édition collaborative riche (formatage), reste à venir.</>
+        )}
       </div>
     </Panel>
   );
 }
 
+function ModeButton({
+  active, onClick, icon, label, hint,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  hint: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`text-left px-2.5 py-2 rounded-md transition ${active ? 'theme-card shadow-sm' : 'theme-muted hover:theme-text'}`}
+    >
+      <div className="flex items-center gap-1.5 text-xs font-semibold theme-text">
+        {icon} {label}
+      </div>
+      <div className="text-[10px] theme-muted mt-0.5 leading-tight">{hint}</div>
+    </button>
+  );
+}
+
 function RunningView({
-  url, urls, expiresAt, qr, onCopy, onOpen, onStop,
+  url, urls, expiresAt, qr, live, onCopy, onOpen, onStop,
 }: {
   url: string;
   urls: string[];
   expiresAt: number;
   qr: string;
+  live: boolean;
   onCopy: () => void;
   onOpen: () => void;
   onStop: () => void;
@@ -198,8 +299,16 @@ function RunningView({
 
   return (
     <div className="px-5 py-5 flex flex-col items-center gap-3">
-      <div className="rounded-2xl shadow-lg p-3 bg-white">
+      <div className="rounded-2xl shadow-lg p-3 bg-white relative">
         <img src={qr} alt="QR code de partage" className="block w-[260px] h-[260px]" />
+        {live && (
+          <span
+            className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full text-[10px] font-bold text-white shadow"
+            style={{ background: '#22c55e' }}
+          >
+            ● LIVE
+          </span>
+        )}
       </div>
       <p className="text-sm theme-text text-center max-w-sm leading-relaxed">
         Scanne avec ton téléphone (appareil photo).

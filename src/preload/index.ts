@@ -121,10 +121,20 @@ const api = {
 
   // LAN share — spins up a one-hour HTTP server serving a single note as
   // an HTML page so a friend on the same Wi-Fi can scan a QR and read it.
-  shareStart: (args: { noteId: string; title: string; html: string; text: string }) =>
+  // When `live: true`, the page becomes a contenteditable that two-way syncs
+  // with the host via SSE + POST.
+  shareStart: (args: { noteId: string; title: string; html: string; text: string; live?: boolean }) =>
     ipcRenderer.invoke('share:start', args),
   shareStop: (key: string) => ipcRenderer.invoke('share:stop', key),
   shareList: () => ipcRenderer.invoke('share:list'),
+  shareHostUpdate: (args: { key: string; title: string; text: string }) =>
+    ipcRenderer.invoke('share:host-update', args),
+  /** Subscribe to peer-originated edits coming from a connected phone client. */
+  onSharePeerUpdate: (cb: (info: { key: string; noteId: string; title: string; text: string; version: number }) => void) => {
+    const handler = (_e: unknown, info: any) => cb(info);
+    ipcRenderer.on('share:peer-update', handler);
+    return () => ipcRenderer.removeListener('share:peer-update', handler);
+  },
 
   // Generic data-file primitives (CRDT/sync layer)
   readDataFile: (rel: string) => ipcRenderer.invoke('data:read', rel),
