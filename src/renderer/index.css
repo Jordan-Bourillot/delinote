@@ -1,0 +1,479 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; margin: 0; }
+html { transition: background-color 200ms; }
+
+/* ----------------------------- THEMES ----------------------------- */
+
+:root {
+  --accent: #F37223; /* LeDenicheur orange */
+}
+
+/* Light — inspired by LeDenicheur: clean white, deep navy text, warm orange accents */
+html[data-theme='light'] {
+  --bg: #ffffff;
+  --bg-soft: #f6f7f9;
+  --sidebar: #f1f3f6;
+  --list: #fafbfc;
+  --card: #ffffff;
+  --card-soft: #f4f5f8;
+  --popover: #ffffff;
+  --text: #1B2330;          /* deep navy */
+  --muted: #6B7280;          /* mid gray */
+  --border: #e2e5eb;
+  --border-soft: #eef0f4;
+  --hover: rgba(243,114,35,0.06);
+  --pill: #fff2e8;           /* very pale orange */
+  --pill-text: #c44a00;      /* deep orange */
+  --input: #f3f4f6;
+  --kbd-bg: #eef0f4;
+  --kbd-border: #cfd4dc;
+  --list-active: rgba(243,114,35,0.10);
+  --toggle-off: #cdd2da;
+  --accent-bg-soft: rgba(243,114,35,0.12);
+}
+
+/* Dark — deep navy carbon with the same warm orange accent */
+html[data-theme='dark'] {
+  --bg: #0e1018;
+  --bg-soft: #141724;
+  --sidebar: #0a0c14;
+  --list: #11141f;
+  --card: #181b28;
+  --card-soft: #1d2030;
+  --popover: #20243a;
+  --text: #eef0f6;
+  --muted: #8b91a3;
+  --border: #2a2f44;
+  --border-soft: #1c2034;
+  --hover: rgba(243,114,35,0.10);
+  --pill: #2a2235;
+  --pill-text: #fdba74;
+  --input: #1a1d2c;
+  --kbd-bg: #252a3e;
+  --kbd-border: #353c54;
+  --list-active: rgba(243,114,35,0.16);
+  --toggle-off: #383e54;
+  --accent-bg-soft: rgba(243,114,35,0.18);
+}
+
+/* Caribbean — warm cream + turquoise. Refined. */
+html[data-theme='caribbean'] {
+  --bg: #fbf6e9;
+  --bg-soft: #f3ecd6;
+  --sidebar: #ece2c4;
+  --list: #f6efd9;
+  --card: #fbf6e9;
+  --card-soft: #ede4c7;
+  --popover: #fbf6e9;
+  --text: #143838;          /* deep peacock */
+  --muted: #6a7b78;
+  --border: #d8c9a4;
+  --border-soft: #e6dab9;
+  --hover: rgba(13,148,136,0.07);
+  --pill: #d2eae6;
+  --pill-text: #0f504a;
+  --input: #f1e8cd;
+  --kbd-bg: #e8dbb8;
+  --kbd-border: #c8b685;
+  --list-active: rgba(13,148,136,0.10);
+  --toggle-off: #c8b88a;
+  --accent-bg-soft: rgba(13,148,136,0.13);
+}
+
+/* Sepia / warm */
+html[data-theme='sepia'] {
+  --bg: #fbf4e4;
+  --bg-soft: #f5edd8;
+  --sidebar: #efe4ca;
+  --list: #f7f0dd;
+  --card: #fbf4e4;
+  --card-soft: #f1e8cf;
+  --popover: #fbf4e4;
+  --text: #3a2f1c;
+  --muted: #7d6f56;
+  --border: #d6c8a3;
+  --border-soft: #e3d8b8;
+  --hover: rgba(58,47,28,0.06);
+  --pill: #ead9b1;
+  --pill-text: #5b4a2c;
+  --input: #f0e7cb;
+  --kbd-bg: #ead9b1;
+  --kbd-border: #c8b682;
+  --list-active: rgba(58,47,28,0.08);
+  --toggle-off: #c8b88a;
+  --accent-bg-soft: rgba(180,83,9,0.16);
+}
+
+body { background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; }
+
+/* ----- Optional user-supplied background image (src/renderer/public/fond.{png,jpg,jpeg,webp}) ----- */
+html.has-fond body {
+  background-image: var(--fond-url);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+/* Soft theme overlay so text stays readable. */
+html.has-fond body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  opacity: 0.78;
+  pointer-events: none;
+  z-index: 0;
+}
+html.has-fond #root { position: relative; z-index: 1; }
+/* Make the editor / home area transparent so the fond shows through */
+html.has-fond .theme-bg { background-color: transparent; }
+html.has-fond .theme-bg-soft { background-color: rgba(255, 255, 255, 0.04); }
+/* Sidebar & note list stay opaque to frame the image */
+html.has-fond .theme-sidebar,
+html.has-fond .theme-list { backdrop-filter: blur(2px); }
+
+/* When a background image is active, all cards/popovers need stronger
+   borders and subtle elevation to read well against the photo. */
+html.has-fond .theme-card,
+html.has-fond .theme-card-soft,
+html.has-fond .theme-popover {
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(6px);
+}
+html[data-theme='dark'].has-fond .theme-card,
+html[data-theme='dark'].has-fond .theme-card-soft,
+html[data-theme='dark'].has-fond .theme-popover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+/* Soft borders become visible borders */
+html.has-fond .theme-border-soft { border-color: var(--border); }
+/* Pinned notes glow stays distinct on a busy background */
+html.has-fond .pinned-glow {
+  box-shadow:
+    0 0 0 1.5px var(--accent),
+    0 4px 14px rgba(243, 114, 35, 0.18),
+    0 1px 3px rgba(0, 0, 0, 0.06);
+}
+/* Status bar gets a thin top divider strong enough to be seen */
+html.has-fond .theme-bg-soft { border-color: var(--border); }
+/* Tag pills slightly more opaque so they're legible */
+html.has-fond .theme-pill {
+  background: var(--pill);
+  box-shadow: inset 0 0 0 1px var(--border-soft);
+}
+
+/* Theme utility classes */
+.theme-bg { background: var(--bg); }
+.theme-bg-soft { background: var(--bg-soft); }
+.theme-sidebar { background: var(--sidebar); }
+.theme-list { background: var(--list); }
+.theme-card { background: var(--card); }
+.theme-card-soft { background: var(--card-soft); }
+.theme-popover { background: var(--popover); border: 1px solid var(--border); }
+.theme-text { color: var(--text); }
+.theme-muted { color: var(--muted); }
+.theme-border { border-color: var(--border); }
+.theme-border-soft { border-color: var(--border-soft); }
+.theme-hover:hover, .hover\:theme-hover:hover { background: var(--hover); }
+.theme-hover { background: var(--hover); }
+.theme-pill { background: var(--pill); color: var(--pill-text); }
+.theme-input { background: var(--input); color: var(--text); border: 1px solid var(--border-soft); }
+.theme-kbd { background: var(--kbd-bg); border: 1px solid var(--kbd-border); border-bottom-width: 2px; padding: 1px 5px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 10px; color: var(--text); }
+.theme-list-active { background: var(--list-active); }
+.theme-toggle-off { background: var(--toggle-off); }
+.theme-accent { color: var(--accent); }
+.theme-accent-bg { background: var(--accent); color: white; }
+.theme-accent-bg-soft { background: var(--accent-bg-soft); }
+kbd.theme-kbd { display: inline-block; }
+
+/* Distraction-free + read-mode tweaks */
+.read-mode .ProseMirror { font-family: "Iowan Old Style", "Apple Garamond", Baskerville, "Times New Roman", serif; line-height: 1.8; }
+.read-mode .ProseMirror p { font-size: 1.05em; }
+
+/* ---- Mode édition vs mode lecture : signal visuel clair ----
+   Une bande colorée à gauche + un voile discret au-dessus indiquent
+   sans ambiguïté dans quel mode on se trouve : jaune/ambré = édition,
+   bleu = lecture. Visible en permanence, tant qu'une note est ouverte. */
+[data-mode='edit']::before,
+[data-mode='read']::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  pointer-events: none;
+  z-index: 5;
+}
+[data-mode='edit']::before { background: linear-gradient(180deg, #eab308, #ca8a04); box-shadow: 0 0 12px rgba(234, 179, 8, 0.4); }
+[data-mode='read']::before { background: linear-gradient(180deg, #3b82f6, #1d4ed8); box-shadow: 0 0 12px rgba(59, 130, 246, 0.35); }
+
+/* Pulsation discrète du badge d'édition pour qu'il attire l'œil au démarrage. */
+@keyframes edit-mode-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.45); }
+  50%      { box-shadow: 0 0 0 4px rgba(234, 179, 8, 0); }
+}
+.edit-mode-badge { animation: edit-mode-pulse 2.4s ease-out infinite; }
+
+/* ----------------------------- ProseMirror ----------------------------- */
+.ProseMirror {
+  outline: none;
+  min-height: 100%;
+  color: var(--text);
+  line-height: 1.7;
+  padding-top: 0.5rem;
+}
+.ProseMirror h1 { font-size: 1.95rem; font-weight: 700; margin: 1.2em 0 0.4em; letter-spacing: -0.01em; }
+.ProseMirror h2 { font-size: 1.5rem; font-weight: 700; margin: 1.1em 0 0.4em; letter-spacing: -0.01em; }
+.ProseMirror h3 { font-size: 1.2rem; font-weight: 600; margin: 1em 0 0.3em; }
+.ProseMirror p { margin: 0.5em 0; }
+.ProseMirror ul, .ProseMirror ol { margin: 0.5em 0; padding-left: 1.5em; }
+.ProseMirror ul { list-style: disc; }
+.ProseMirror ol { list-style: decimal; }
+.ProseMirror blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1em;
+  color: var(--muted);
+  margin: 0.8em 0;
+  font-style: italic;
+}
+.ProseMirror code {
+  background: var(--card-soft);
+  padding: 0.12em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+.ProseMirror pre {
+  background: var(--card-soft);
+  padding: 0.9em 1.1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.8em 0;
+  border: 1px solid var(--border-soft);
+}
+.ProseMirror pre code { background: transparent; padding: 0; font-size: 0.88em; }
+.ProseMirror a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: color 120ms;
+}
+.ProseMirror a:hover { color: #1d4ed8; cursor: pointer; }
+html[data-theme='dark'] .ProseMirror a { color: #60a5fa; }
+html[data-theme='dark'] .ProseMirror a:hover { color: #93c5fd; }
+.ProseMirror hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+.ProseMirror img { max-width: 100%; border-radius: 8px; margin: 0.6em 0; }
+.ProseMirror mark { background: rgba(250, 204, 21, 0.4); padding: 0.05em 0.15em; border-radius: 3px; }
+
+/* Tables */
+.ProseMirror table { border-collapse: collapse; margin: 0.8em 0; width: 100%; table-layout: fixed; overflow: hidden; }
+.ProseMirror table td, .ProseMirror table th {
+  border: 1px solid var(--border);
+  padding: 0.45em 0.6em;
+  vertical-align: top;
+  position: relative;
+}
+.ProseMirror table th { background: var(--card-soft); font-weight: 600; }
+.ProseMirror .selectedCell:after { background: rgba(99, 102, 241, 0.18); content: ""; left: 0; right: 0; top: 0; bottom: 0; pointer-events: none; position: absolute; z-index: 2; }
+
+/* Task list */
+.ProseMirror ul[data-type="taskList"] { list-style: none; padding-left: 0.2em; }
+.ProseMirror ul[data-type="taskList"] li { display: flex; gap: 0.5em; align-items: flex-start; margin: 0.15em 0; }
+.ProseMirror ul[data-type="taskList"] li > label { user-select: none; padding-top: 0.3em; }
+.ProseMirror ul[data-type="taskList"] li > div { flex: 1; }
+.ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div { color: var(--muted); text-decoration: line-through; }
+.ProseMirror ul[data-type="taskList"] input[type="checkbox"] { accent-color: var(--accent); }
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Code highlight (lowlight) */
+.hljs-comment, .hljs-quote { color: #8a8d96; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-name, .hljs-tag { color: #c084fc; }
+.hljs-string, .hljs-title, .hljs-section, .hljs-attribute, .hljs-literal, .hljs-template-tag, .hljs-template-variable, .hljs-type, .hljs-addition { color: #86efac; }
+.hljs-deletion, .hljs-selector-attr, .hljs-selector-pseudo, .hljs-meta { color: #fda4af; }
+.hljs-number, .hljs-doctag, .hljs-regexp, .hljs-symbol, .hljs-variable, .hljs-template-variable, .hljs-link, .hljs-selector-attr, .hljs-selector-pseudo { color: #fbbf24; }
+.hljs-attr, .hljs-class .hljs-title, .hljs-type { color: #93c5fd; }
+
+/* Highlighted heading flash (TOC click) */
+.flash-highlight { background: var(--accent-bg-soft); transition: background 1500ms; border-radius: 4px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Sidebar subtle gradient texture */
+.theme-sidebar {
+  background-image:
+    radial-gradient(ellipse at top, rgba(243,114,35,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom, rgba(13,148,136,0.05) 0%, transparent 60%);
+}
+
+/* Pinned card glow */
+.pinned-glow {
+  box-shadow: 0 0 0 1px rgba(243,114,35,0.25), 0 4px 20px rgba(243,114,35,0.08);
+}
+
+/* Note list rows: lift on hover */
+.note-row { transition: transform 150ms cubic-bezier(0.2, 0.8, 0.2, 1), background 150ms; }
+
+/* Selected row (Ctrl+click or Ctrl+A) — needs to be UNMISTAKABLE */
+.note-row-selected {
+  position: relative;
+  /* Strong orange tint applied directly on the row itself, not just an overlay,
+     so the highlight wins regardless of theme background or hover state. */
+  background: color-mix(in srgb, var(--accent) 38%, transparent) !important;
+  box-shadow:
+    inset 4px 0 0 var(--accent),                /* thick left accent bar */
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent); /* contour */
+}
+.note-row-selected > * { position: relative; z-index: 1; }
+.note-row-selected:hover {
+  transform: none !important;
+  background: color-mix(in srgb, var(--accent) 48%, transparent) !important;
+}
+.note-row:hover { transform: translateY(-1px); }
+/* Subtle pop animation when many rows get selected at once (Ctrl+A) */
+@keyframes note-select-pop {
+  0%   { transform: scale(1);    }
+  50%  { transform: scale(1.012);}
+  100% { transform: scale(1);    }
+}
+.note-row-selected { animation: note-select-pop 220ms ease-out; }
+
+/* Animations */
+@keyframes slide-in-from-right {
+  from { transform: translateX(20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+.animate-in { animation-duration: 200ms; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); animation-fill-mode: both; }
+.slide-in-from-right { animation-name: slide-in-from-right; }
+.fade-in { animation: fade-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.pop-in { animation: pop-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* Card hover lift across the whole app — adds tactile depth without being noisy. */
+.theme-card,
+.theme-card-soft {
+  transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 200ms;
+}
+
+/* Buttons feel responsive */
+button { transition: transform 80ms ease, opacity 120ms; }
+button:active:not(:disabled) { transform: scale(0.97); }
+
+/* Inputs / selects polish */
+input, select, textarea { transition: box-shadow 140ms, border-color 140ms; }
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent-bg-soft);
+}
+
+/* Smoother modal backdrop */
+.fixed.inset-0.z-50 { animation: fade-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+/* Tabs hover effect */
+.note-row, .theme-pill, kbd { user-select: none; }
+
+/* Focus rings tuned to accent */
+button:focus-visible, input:focus-visible, select:focus-visible, [role='switch']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Hide focus outline on mouse-only clicks */
+button:focus:not(:focus-visible) { outline: none; }
+
+/* Wiki links — [[Note title]] inline chips */
+.wiki-link-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+  padding: 0 4px;
+  margin: 0 1px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 120ms, color 120ms;
+  user-select: none;
+}
+.wiki-link-chip .wiki-bracket { opacity: 0.55; font-weight: 400; }
+.wiki-link-chip:hover { filter: brightness(1.05); }
+.wiki-link-chip.wiki-exists {
+  color: var(--accent);
+  background: var(--accent-bg-soft);
+}
+.wiki-link-chip.wiki-exists:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.wiki-link-chip.wiki-missing {
+  color: var(--muted);
+  background: transparent;
+  outline: 1px dashed var(--border);
+  outline-offset: -1px;
+}
+.wiki-link-chip.wiki-missing:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+/* Kanban column drop highlight */
+.kanban-col.drop-target { box-shadow: inset 0 0 0 2px var(--accent); }
+
+/* ----------------------------- Priority frames -----------------------------
+   Notes can be flagged "important" (jaune) and/or "urgent" (bleu).
+   Frame is drawn via an absolute ::after overlay so it sits on top of the
+   row/editor without affecting layout. pointer-events:none lets clicks pass
+   through. Blink applies to ::after only (not the content).                  */
+.note-priority-frame { position: relative; }
+.note-priority-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 5;
+  border: 2px solid transparent;
+}
+.note-priority-frame.note-priority-important::after {
+  border-color: #eab308; /* jaune */
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.35);
+}
+.note-priority-frame.note-priority-urgent::after {
+  border-color: #3b82f6; /* bleu */
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.35);
+}
+.note-priority-frame.note-priority-both::after {
+  border-color: #eab308;
+  box-shadow:
+    inset 0 0 0 2px #3b82f6,
+    0 0 10px rgba(234, 179, 8, 0.35);
+}
+
+@keyframes urgent-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+.note-priority-frame.note-priority-blink::after {
+  animation: urgent-blink 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-priority-frame.note-priority-blink::after { animation: none; }
+}

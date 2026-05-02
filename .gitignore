@@ -6,3 +6,12 @@ dist
 
 # Local Netlify folder
 .netlify
+
+# Claude Code local config (perso)
+.claude/
+
+# Windows folder customization
+desktop.ini
+
+# Pre-built installers — go in GitHub Releases, not the repo
+Installation/

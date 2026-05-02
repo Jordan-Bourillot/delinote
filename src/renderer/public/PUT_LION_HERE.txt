@@ -1,0 +1,7 @@
+Save your lion image here as exactly:
+
+    lion.png
+
+The Logo component will detect it automatically.
+PNG with transparent background recommended (the white square background of your inspiration image will show otherwise).
+JPG also works — rename to lion.png.
