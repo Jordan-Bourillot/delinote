@@ -67,10 +67,10 @@ export function TriskellMark({ size = 14, className = '' }: { size?: number; cla
 }
 
 function SvgFallback({ size, className }: { size: number; className: string }) {
-  // Triskèle redesign — three rounded teardrop petals at 120° with a tiny
-  // swirl (one side longer than the other so the whole thing reads as
-  // "movement / spiral" rather than "static cloverleaf"). White core for
-  // strong pop against any background. Tested at 11 / 14 / 18 px.
+  // Triskèle v2 — three symmetric leaf petals at exact 120° intervals.
+  // Symmetry matters at small sizes : asymmetric curls turn into mush.
+  // Bold strokes around each petal give edge definition on any bg.
+  // Centre dot in dark navy = visible on white badges and on light bgs alike.
   return (
     <svg
       width={size}
@@ -82,24 +82,15 @@ function SvgFallback({ size, className }: { size: number; className: string }) {
       style={{ display: 'inline-block', verticalAlign: 'middle' }}
     >
       <g transform="translate(18 18)">
-        {/* Petal — wide at center, tapering to a curled tip up-and-right */}
-        <path
-          d="M -3 1 Q -5 -3 -1 -10 Q 3 -15 7 -11 Q 9 -7 5 -3 Q 1 0 -3 1 Z"
-          fill="#F37223"
-        />
-        <path
-          d="M -3 1 Q -5 -3 -1 -10 Q 3 -15 7 -11 Q 9 -7 5 -3 Q 1 0 -3 1 Z"
-          fill="#6366F1"
-          transform="rotate(120)"
-        />
-        <path
-          d="M -3 1 Q -5 -3 -1 -10 Q 3 -15 7 -11 Q 9 -7 5 -3 Q 1 0 -3 1 Z"
-          fill="#FACC15"
-          transform="rotate(240)"
-        />
-        {/* Central pearl — subtle inner shadow via stroke for definition */}
-        <circle r="3.4" fill="#FFFFFF" />
-        <circle r="3.4" fill="none" stroke="rgba(27,35,48,0.18)" strokeWidth="0.6" />
+        {/* Symmetric leaf — points straight up from centre */}
+        <g stroke="#1B2330" strokeWidth="0.7" strokeLinejoin="round">
+          <path d="M 0 -3.2 Q -4 -8 0 -13.5 Q 4 -8 0 -3.2 Z" fill="#F37223" />
+          <path d="M 0 -3.2 Q -4 -8 0 -13.5 Q 4 -8 0 -3.2 Z" fill="#6366F1" transform="rotate(120)" />
+          <path d="M 0 -3.2 Q -4 -8 0 -13.5 Q 4 -8 0 -3.2 Z" fill="#FACC15" transform="rotate(240)" />
+        </g>
+        {/* Centre hub — dark core with thin rim, reads on any background */}
+        <circle r="3.4" fill="#1B2330" />
+        <circle r="3.4" fill="none" stroke="#FFFFFF" strokeWidth="0.7" />
       </g>
     </svg>
   );

@@ -229,15 +229,19 @@ export default function HomeScreen() {
         </div>
 
         {/* Discreet studio credit — clickable, opens triskell-studio.fr */}
-        <button
-          onClick={openTriskellSite}
-          title={`${t('studio.tag')} — ${TRISKELL_URL}`}
-          aria-label={`${t('studio.tag')} — ouvrir triskell-studio.fr`}
-          className="mt-12 flex items-center justify-center gap-1.5 text-xs theme-muted opacity-60 hover:opacity-100 hover:theme-text transition cursor-pointer mx-auto"
-        >
-          <TriskellMark size={22} />
-          <span className="text-sm">{t('studio.tag')}</span>
-        </button>
+        {/* Wrapper centers a pill button with a solid bg so any divider line
+            in the surrounding layout doesn't bleed through the logo & text. */}
+        <div className="mt-12 flex justify-center">
+          <button
+            onClick={openTriskellSite}
+            title={`${t('studio.tag')} — ${TRISKELL_URL}`}
+            aria-label={`${t('studio.tag')} — ouvrir triskell-studio.fr`}
+            className="relative z-10 inline-flex items-center gap-2 px-4 py-2 rounded-full theme-card border theme-border-soft text-xs theme-muted hover:theme-text shadow-sm transition cursor-pointer"
+          >
+            <TriskellMark size={22} />
+            <span className="text-sm">{t('studio.tag')}</span>
+          </button>
+        </div>
       </div>
     </div>
   );
