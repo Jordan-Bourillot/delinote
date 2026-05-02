@@ -258,7 +258,7 @@ export default function WhatsNewModal({ onClose }: { onClose: () => void }) {
         <div className="px-4 py-3 border-t theme-border-soft theme-bg-soft flex items-center gap-2">
           <div className="flex items-center gap-1.5 text-[10px] theme-muted opacity-70">
             <TriskellMark size={11} />
-            <span>par Triskell Studio</span>
+            <span>propulsé par Triskell Studio</span>
           </div>
           <div className="flex-1" />
           {!isLast ? (

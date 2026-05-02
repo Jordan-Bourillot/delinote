@@ -70,7 +70,7 @@ export default function BetaExpired({ status }: { status: BetaStatus }) {
 
         <div className="mt-8 flex items-center justify-center gap-1.5 text-[11px] text-slate-500 opacity-80">
           <TriskellMark size={11} />
-          <span>par Triskell Studio</span>
+          <span>propulsé par Triskell Studio</span>
         </div>
       </div>
     </div>

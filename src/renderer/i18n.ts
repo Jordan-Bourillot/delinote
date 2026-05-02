@@ -259,7 +259,7 @@ const EN = {
   'settings.aboutVersion': 'v0.3.2 — built with Electron + React + Tiptap',
   'settings.aboutVersionSuffix': 'built with Electron + React + Tiptap',
   'studio.byLine': 'Crafted by Triskell Studio',
-  'studio.tag': 'by Triskell Studio',
+  'studio.tag': 'powered by Triskell Studio',
   'studio.cta': 'Discover other apps',
   'studio.thanks': 'Thanks for using DéliNote — made with care by Triskell Studio.',
 
@@ -908,7 +908,7 @@ const FR: Record<keyof typeof EN, string> = {
   'settings.aboutVersion': 'v0.3.2 — construit avec Electron + React + Tiptap',
   'settings.aboutVersionSuffix': 'construit avec Electron + React + Tiptap',
   'studio.byLine': 'Conçu par Triskell Studio',
-  'studio.tag': 'par Triskell Studio',
+  'studio.tag': 'propulsé par Triskell Studio',
   'studio.cta': 'Découvrir d\'autres apps',
   'studio.thanks': 'Merci d\'utiliser DéliNote — fait avec soin par Triskell Studio.',
 
