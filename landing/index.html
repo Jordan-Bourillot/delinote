@@ -1281,6 +1281,12 @@
     object-fit: contain;
   }
   .cross-promo__card--studiopdf .cross-promo__icon-img { width: 42px; height: 42px; }
+  .cross-promo__card--suite .cross-promo__icon-img {
+    width: auto; height: 46px; max-width: 80px;
+    filter:
+      drop-shadow(0 0 6px rgba(255,255,255,.45))
+      drop-shadow(0 0 14px rgba(255,255,255,.22));
+  }
 
   .cross-promo__card--soon {
     cursor: default;
@@ -1368,7 +1374,7 @@
 
       <a href="https://triskell-studio.fr" target="_blank" rel="noopener" class="cross-promo__card cross-promo__card--suite" aria-label="La Suite des Héros — pack de 11 outils desktop">
         <div class="cross-promo__logo cross-promo__logo--icon">
-          <img src="img/suite-des-heros.png" alt="" class="cross-promo__icon-img" width="38" height="38" loading="lazy" decoding="async">
+          <img src="img/suite-des-heros.png" alt="" class="cross-promo__icon-img" width="68" height="46" loading="lazy" decoding="async">
           <span class="cross-promo__logo-word">Suite des Héros</span>
         </div>
         <p class="cross-promo__tagline">Pack 11 outils · paiement unique</p>
