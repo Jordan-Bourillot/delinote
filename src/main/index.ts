@@ -36,7 +36,11 @@ async function createWindow() {
     height: 880,
     minWidth: 940,
     minHeight: 600,
-    backgroundColor: '#ffffff',
+    // Match the "caribbean" theme cream so the window doesn't flash white
+    // before the renderer paints. We also wait for `ready-to-show` to
+    // avoid the brief blank frame between window creation and first paint.
+    backgroundColor: '#FAF6EE',
+    show: false,
     title: 'DéliNote',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     autoHideMenuBar: true,
@@ -65,6 +69,13 @@ async function createWindow() {
   } else {
     await win.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
+
+  // Show the window only when the renderer signals it has painted at least
+  // once. Combined with `show: false` and a themed `backgroundColor`, this
+  // eliminates the brief white flash that used to follow a relaunch.
+  win.once('ready-to-show', () => {
+    if (!win.isDestroyed()) win.show();
+  });
 
   // F12 / Ctrl+Shift+I to toggle DevTools manually
   win.webContents.on('before-input-event', (_event, input) => {

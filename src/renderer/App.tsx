@@ -433,9 +433,35 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="h-full flex flex-col items-center justify-center theme-bg theme-muted gap-4">
-        <Logo size={64} className="animate-pulse" />
-        <p className="text-sm">Loading…</p>
+      <div className="h-full flex flex-col items-center justify-center theme-bg gap-5 fade-in">
+        <div className="relative">
+          <Logo size={88} className="drop-shadow-md" />
+          <span
+            aria-hidden
+            className="absolute -inset-3 rounded-full pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle, var(--accent-bg-soft) 0%, transparent 70%)',
+              animation: 'edit-mode-pulse 2s ease-out infinite',
+            }}
+          />
+        </div>
+        <div className="flex flex-col items-center gap-1">
+          <h1 className="text-2xl font-bold theme-text tracking-tight">DéliNote</h1>
+          <p className="text-xs theme-muted">Démarrage…</p>
+        </div>
+        <div
+          className="w-32 h-1 rounded-full overflow-hidden"
+          style={{ background: 'var(--border)' }}
+        >
+          <div
+            className="h-full"
+            style={{
+              background: 'linear-gradient(90deg, transparent, var(--accent), transparent)',
+              animation: 'slide-in-from-right 1.4s ease-in-out infinite',
+              backgroundSize: '200% 100%',
+            }}
+          />
+        </div>
       </div>
     );
   }

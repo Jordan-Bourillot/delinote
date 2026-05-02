@@ -1,6 +1,6 @@
 {
   "name": "delinote",
-  "version": "0.9.5",
+  "version": "0.9.6",
   "description": "DéliNote — local-first note-taking app with notes, calendar, tasks, attachments, and medication tracking. 100% offline, no telemetry.",
   "main": "out/main/index.js",
   "author": {
@@ -146,7 +146,7 @@
       "shortcutName": "DéliNote",
       "include": "build/installer.nsh",
       "deleteAppDataOnUninstall": false,
-      "differentialPackage": false,
+      "differentialPackage": true,
       "warningsAsErrors": false
     },
     "mac": {

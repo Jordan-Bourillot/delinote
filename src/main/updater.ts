@@ -131,9 +131,11 @@ export async function checkForUpdates(): Promise<void> {
  */
 export function quitAndInstall(): void {
   if (lastStatus.phase !== 'ready') return;
-  // isSilent=true → don't show NSIS UI ; isForceRunAfter=true → relaunch.
+  // isSilent=false → show NSIS progress bar so the user sees what's happening
+  //   during the ~10 s the .exe is replaced (instead of a black gap).
+  // isForceRunAfter=true → relaunch DéliNote automatically once installed.
   setImmediate(() => {
-    autoUpdater.quitAndInstall(true, true);
+    autoUpdater.quitAndInstall(false, true);
   });
 }
 

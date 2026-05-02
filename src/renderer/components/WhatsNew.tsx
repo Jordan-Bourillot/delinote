@@ -19,6 +19,17 @@ type Entry = {
 
 export const CHANGELOG: Entry[] = [
   {
+    version: '0.9.6',
+    date: '2026-05-03',
+    title: 'Mise à jour : on te dit ce qui se passe',
+    highlights: [
+      '🔄 **Dialogue d\'installation détaillé** : 4 étapes visibles (Préparation → Fermeture → Installation → Relance) avec icônes de progression. Tu sais à chaque seconde ce qui se passe, fini le « trou noir »',
+      '🪟 **Installeur Windows visible** : la fenêtre NSIS s\'affiche pendant le remplacement des fichiers (~10 sec). Tu vois la barre de progression Windows au lieu d\'une fenêtre fermée',
+      '📦 **Mises à jour différentielles** : à partir de cette version, les MAJ ne re-téléchargent plus que ce qui a changé (~10-30 Mo au lieu de 155 Mo). Tes prochains téléchargements seront 5-10x plus rapides',
+      '🚀 **Démarrage plus propre** : la fenêtre attend d\'être prête à afficher avant de s\'ouvrir, plus de flash blanc au lancement. Splash screen avec logo animé pendant les premières millisecondes',
+    ],
+  },
+  {
     version: '0.9.5',
     date: '2026-05-03',
     title: 'Logo Triskell Studio redessiné',
