@@ -8,6 +8,7 @@ import { X, RotateCcw, Download, Upload, Folder, FolderOpen, Sparkles, Check, Sp
 import { TriskellMark } from './TriskellMark';
 import { applyProfile, detectCurrentProfile, type ProfileId } from '../profiles';
 import { useUpdateStatus } from './UpdateBanner';
+import LabSection from './LabSection';
 
 export default function SettingsPanel() {
   const { settings, set, toggle, reset, exportToJSON, importFromJSON } = useSettings();
@@ -42,6 +43,7 @@ export default function SettingsPanel() {
     { id: 'profile', label: 'Profil d\'utilisation' },
     { id: 'appearance', label: t('settings.appearance') },
     ...FEATURE_CATEGORIES.map((c) => ({ id: c.id, label: t(c.labelKey as StringKey) })),
+    { id: 'lab', label: '🧪 Labo' },
     { id: 'data', label: t('settings.dataBackup') },
     { id: 'updates', label: 'Mises à jour' },
     { id: 'about', label: t('settings.about') },
@@ -80,6 +82,7 @@ export default function SettingsPanel() {
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {section === 'profile' && <ProfileSection />}
           {section === 'appearance' && <AppearanceSection settings={settings} set={set} />}
+          {section === 'lab' && <LabSection />}
           {section === 'data' && (
             <DataSection
               exportSettings={() => {

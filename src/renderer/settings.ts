@@ -101,6 +101,19 @@ export type Settings = {
   enableContactsModule: boolean;
   enableMedicationsModule: boolean;
   enableHelpModule: boolean;
+
+  // ----- Lab / innovations (toggles for 8 disruptive features) -----
+  // Off by default — user opts in. Each one ships with a feedback widget
+  // (j'aime / à améliorer / pas d'intérêt) collected in localStorage.
+  labMurmure: boolean;          // AI suggests links between notes via embeddings
+  labFlux: boolean;             // Continuous-writing mode that auto-segments
+  labVocalSpatial: boolean;     // Voice notes with time + context capture
+  labMoodboard: boolean;        // Free-canvas note type
+  labEnergyCalendar: boolean;   // Energy-based scheduling instead of clock-based
+  labQrShare: boolean;          // Peer-to-peer note sharing via QR
+  labTimeTravel: boolean;       // Snapshot scrubber to view a note at any past moment
+  labAutoArchive: boolean;      // Hide notes untouched for N days from default views
+  labAutoArchiveDays: number;   // Days threshold for auto-archive (default 60)
 };
 
 function defaultLanguage(): 'en' | 'fr' {
@@ -197,6 +210,16 @@ export const DEFAULT_SETTINGS: Settings = {
   enableContactsModule: true,
   enableMedicationsModule: true,
   enableHelpModule: true,
+
+  labMurmure: false,
+  labFlux: false,
+  labVocalSpatial: false,
+  labMoodboard: false,
+  labEnergyCalendar: false,
+  labQrShare: false,
+  labTimeTravel: false,
+  labAutoArchive: false,
+  labAutoArchiveDays: 60,
 };
 
 const STORAGE_KEY = 'notevault.settings.v1';

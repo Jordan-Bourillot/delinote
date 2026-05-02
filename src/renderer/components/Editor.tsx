@@ -18,6 +18,7 @@ import { ocrImage } from '../ocr';
 import { tagPillStyle } from '../tagColors';
 import { useTagRegistry } from '../tagRegistry';
 import { priorityClass } from './NoteList';
+import TimeTravelScrubber from './TimeTravelScrubber';
 import { generateHTML } from '@tiptap/html';
 import TurndownService from 'turndown';
 import {
@@ -100,6 +101,7 @@ export default function Editor() {
   const [moreOpen, setMoreOpen] = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [timeTravelOpen, setTimeTravelOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const colorRef = useRef<HTMLDivElement>(null);
   const moveRef = useRef<HTMLDivElement>(null);
@@ -339,6 +341,7 @@ export default function Editor() {
         }}
         onShowHistory={() => openModal('about')}
         onLock={() => setLockOpen(true)}
+        onTimeTravel={settings.labTimeTravel ? () => setTimeTravelOpen(true) : undefined}
       />
 
       <div className={editorWidthClass(settings.editorWidth)}>
@@ -426,6 +429,9 @@ export default function Editor() {
       {dupOpen && current && (
         <DuplicateDialog note={current} onClose={() => setDupOpen(false)} />
       )}
+      {timeTravelOpen && current && (
+        <TimeTravelScrubber onClose={() => setTimeTravelOpen(false)} />
+      )}
     </div>
   );
 }
@@ -457,6 +463,7 @@ function NoteHeader(props: {
   onMove: (nbId: string) => void;
   onShowHistory: () => void;
   onLock: () => void;
+  onTimeTravel?: () => void;
 }) {
   const settings = useSettings((s) => s.settings);
   const t = props.t;
@@ -562,6 +569,11 @@ function NoteHeader(props: {
               <MenuItem icon={<span>🔒</span>} onClick={() => { props.onLock(); props.setMoreOpen(false); }}>
                 {t('enc.lock')}
               </MenuItem>
+              {props.onTimeTravel && (
+                <MenuItem icon={<History size={13} />} onClick={() => { props.onTimeTravel?.(); props.setMoreOpen(false); }}>
+                  Retour dans le temps…
+                </MenuItem>
+              )}
               {settings.enableExport && (
                 <>
                   <MenuItem icon={<Download size={13} />} onClick={() => props.onExport('md')}>{t('editor.exportMd')}</MenuItem>

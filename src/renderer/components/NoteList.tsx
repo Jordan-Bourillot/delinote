@@ -81,6 +81,7 @@ export default function NoteList() {
     }
   }, [view, index.notebooks, t]);
 
+  const [showArchived, setShowArchived] = useState(false);
   const notes: NoteMeta[] = useMemo(() => {
     if (view.kind === 'search' && searchResults) return searchResults;
     let list = index.notes.slice();
@@ -91,6 +92,13 @@ export default function NoteList() {
       case 'tag': list = list.filter((n) => !n.trashed && n.tags.includes(view.tag)); break;
       case 'color': list = list.filter((n) => !n.trashed && n.color === view.color); break;
       case 'trash': list = list.filter((n) => n.trashed); break;
+    }
+    // Auto-archive: hide notes untouched for N days from default views.
+    // Pinned/important/urgent notes are immune. Doesn't apply in trash or
+    // search views, and the user can flip it off via the chip below.
+    if (settings.labAutoArchive && !showArchived && view.kind !== 'trash' && view.kind !== 'search') {
+      const cutoff = Date.now() - settings.labAutoArchiveDays * 24 * 60 * 60 * 1000;
+      list = list.filter((n) => n.pinned || n.important || n.urgent || n.updatedAt >= cutoff);
     }
     list.sort((a, b) => {
       if (settings.pinnedAtTop && a.pinned !== b.pinned) return a.pinned ? -1 : 1;
@@ -104,7 +112,15 @@ export default function NoteList() {
     });
     visibleIdsRef.current = list.map((n) => n.id);
     return list;
-  }, [view, index.notes, searchResults, settings.pinnedAtTop, settings.notesSortBy, settings.notesSortOrder]);
+  }, [view, index.notes, searchResults, settings.pinnedAtTop, settings.notesSortBy, settings.notesSortOrder, settings.labAutoArchive, settings.labAutoArchiveDays, showArchived]);
+
+  const archivedCount = useMemo(() => {
+    if (!settings.labAutoArchive || showArchived || view.kind === 'trash' || view.kind === 'search') return 0;
+    const cutoff = Date.now() - settings.labAutoArchiveDays * 24 * 60 * 60 * 1000;
+    return index.notes.filter((n) =>
+      !n.trashed && !n.pinned && !n.important && !n.urgent && n.updatedAt < cutoff,
+    ).length;
+  }, [index.notes, settings.labAutoArchive, settings.labAutoArchiveDays, showArchived, view.kind]);
 
   const allowCreate = view.kind === 'notebook' || view.kind === 'all' || view.kind === 'tag' || view.kind === 'color';
   const isCompact = settings.listDensity === 'compact';
@@ -208,6 +224,28 @@ export default function NoteList() {
             className="text-xs text-red-500 hover:text-red-400 flex items-center gap-1.5"
           >
             <Trash2 size={11} /> {t('list.emptyTrashBtn', { n: notes.length })}
+          </button>
+        </div>
+      )}
+
+      {archivedCount > 0 && (
+        <div className="px-3 py-2 border-b theme-border-soft">
+          <button
+            onClick={() => setShowArchived(true)}
+            className="text-xs theme-muted hover:theme-text inline-flex items-center gap-1.5"
+            title={`${archivedCount} note${archivedCount > 1 ? 's' : ''} non modifiée${archivedCount > 1 ? 's' : ''} depuis ${settings.labAutoArchiveDays} jours`}
+          >
+            📦 {archivedCount} note{archivedCount > 1 ? 's' : ''} archivée{archivedCount > 1 ? 's' : ''} — afficher
+          </button>
+        </div>
+      )}
+      {showArchived && settings.labAutoArchive && view.kind !== 'trash' && view.kind !== 'search' && (
+        <div className="px-3 py-2 border-b theme-border-soft">
+          <button
+            onClick={() => setShowArchived(false)}
+            className="text-xs theme-accent hover:opacity-80 inline-flex items-center gap-1.5"
+          >
+            ✓ Archives affichées — masquer à nouveau
           </button>
         </div>
       )}
