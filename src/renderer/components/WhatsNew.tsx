@@ -19,6 +19,15 @@ type Entry = {
 
 export const CHANGELOG: Entry[] = [
   {
+    version: '0.9.8',
+    date: '2026-05-03',
+    title: 'Triskèle redessiné + crédit Triskell Studio en bouton-pilule',
+    highlights: [
+      '🪶 **Nouveau triskèle SVG** : 3 pétales en feuille strictement symétriques (orange / indigo / or) à 120° pile, contour fin pour bien dessiner les bords. Cœur navy avec un anneau blanc fin — lisible sur fond clair ET sur badge coloré',
+      '🏷️ **Crédit « propulsé par Triskell Studio » sur l\'accueil** dans un bouton-pilule avec fond opaque + bordure douce + ombre légère. Plus aucune ligne horizontale ne le traverse',
+    ],
+  },
+  {
     version: '0.9.7',
     date: '2026-05-03',
     title: 'Logo Triskell Studio rendu visible dans la pop-up Nouveautés',
