@@ -19,6 +19,25 @@ type Entry = {
 
 export const CHANGELOG: Entry[] = [
   {
+    version: '0.9.4',
+    date: '2026-05-02',
+    title: 'Section Labo : 8 innovations + ton avis compte',
+    highlights: [
+      '🧪 **Nouvelle section « Labo »** dans Réglages avec 8 features expérimentales que tu peux activer/désactiver à la pièce. Sur chacune tu votes 👍 j\'aime · 🔧 à améliorer · 👎 pas d\'intérêt — un bouton « Envoyer mes retours » prépare un mail récapitulatif à Triskell Studio',
+      '📦 **Auto-archive** : les notes que tu n\'as pas touchées depuis X jours (7-365, défaut 60) disparaissent doucement de la liste. Pas supprimées — juste cachées. Les épinglées/importantes/urgentes restent immunisées',
+      '🕰️ **Retour dans le temps** : menu « ... » de l\'éditeur → un slider sur l\'historique d\'instantanés de la note. Glisse pour voir une version passée, clique « Restaurer » pour la ramener',
+      '🌌 **Murmure (vraie IA locale)** : un panneau discret bottom-right qui suggère 3 notes proches sémantiquement de celle ouverte. Embeddings ~25 Mo chargés une fois, tout tourne offline ensuite. Score de similarité affiché en %',
+      '⚡ **Mode Flux** : bouton sidebar pour 25 min d\'écriture en continu plein écran (timer Pomodoro). À la fin, l\'app propose de découper le texte en plusieurs notes thématiques que tu valides',
+      '🎙️ **Notes vocales spatiales** : l\'enregistreur audio capture date+heure et l\'événement de calendrier en cours, et l\'inscrit en haut de la transcription. Tu retrouves « ce que je pensais en sortant du dentiste mardi soir »',
+      '🎨 **Mood-board** : un canvas libre par note (menu « ... » → « Mood-board de cette note »). Glisse images, double-clic pour pense-bête, colle du texte/image. Aussi accessible en mode global depuis la sidebar',
+      '🔋 **Anti-calendrier Énergie** : 3 voies (haute/moyenne/basse énergie). Glisse-y tes rappels ET tes évènements de calendrier selon le niveau d\'énergie qu\'ils demandent. Plus parlant que des cases horaires rigides',
+      '📱 **QR Share** : génère un QR code → ton ami scanne avec son téléphone (même Wi-Fi) → il lit la note dans son navigateur. **Mode live** : édition synchronisée des deux côtés en temps réel via un mini serveur HTTP local. 100 % offline, expire après 1 h',
+      '🖼️ **Image de fond personnalisée** dans Réglages → Apparence : choisis une photo, règle l\'opacité 0-100 %',
+      '🐛 **Bug cloche corrigé** : le panneau de notifications s\'ouvrait hors écran à gauche — il s\'ouvre maintenant correctement vers la droite',
+      '✨ **« propulsé par Triskell Studio »** au lieu de « par Triskell Studio » — détail mais on l\'aime mieux',
+    ],
+  },
+  {
     version: '0.9.3',
     date: '2026-05-02',
     title: 'Notes prioritaires + dialogue de mise à jour',
