@@ -1134,6 +1134,271 @@
   </div>
 </section>
 
+<!-- ===================== CROSS PROMO STUDIOS SOEURS ===================== -->
+<style>
+  .cross-promo {
+    background: linear-gradient(135deg, #0b1220 0%, #1e1b4b 60%, #4c1d95 100%);
+    color: #fff;
+    padding: 80px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .cross-promo::before {
+    content: "";
+    position: absolute;
+    top: -30%; left: 50%;
+    transform: translateX(-50%);
+    width: 800px; height: 600px;
+    background: radial-gradient(ellipse, rgba(99,102,241,.18) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .cross-promo .container {
+    position: relative; z-index: 1; text-align: center;
+    max-width: 1200px;
+  }
+  .cross-promo h2 {
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 800;
+    margin: 0 0 18px;
+    letter-spacing: -.02em;
+    background: linear-gradient(135deg, #c7d2fe 0%, #f9a8d4 100%);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  .cross-promo__intro {
+    font-size: 17px;
+    color: #cbd5e0;
+    max-width: 720px;
+    margin: 0 auto 40px;
+    line-height: 1.6;
+  }
+  .cross-promo__intro strong { color: #fff; }
+  .cross-promo__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+    max-width: 1180px;
+    margin: 0 auto;
+    text-align: left;
+  }
+  @media (min-width: 600px) { .cross-promo__grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 900px) { .cross-promo__grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 1100px){ .cross-promo__grid { grid-template-columns: repeat(5, 1fr); gap: 16px; } }
+
+  .cross-promo__card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 16px;
+    padding: 24px 22px;
+    text-decoration: none;
+    color: inherit;
+    transition: transform .2s ease, border-color .2s ease, background .2s ease, box-shadow .2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  @media (min-width: 1100px) {
+    .cross-promo__card { padding: 22px 18px; }
+    .cross-promo__desc { font-size: 14px; }
+  }
+  .cross-promo__card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  .cross-promo__card--triskell::after  { background: radial-gradient(ellipse at top right, rgba(139,92,246,.18) 0%, transparent 60%); }
+  .cross-promo__card--eliks::after     { background: radial-gradient(ellipse at top right, rgba(16,185,129,.18) 0%, transparent 60%); }
+  .cross-promo__card--suite::after     { background: radial-gradient(ellipse at top right, rgba(168,85,247,.24) 0%, transparent 60%); }
+  .cross-promo__card--studiopdf::after { background: radial-gradient(ellipse at top right, rgba(232,156,128,.22) 0%, transparent 60%); }
+  .cross-promo__card--bobeez::after    { background: radial-gradient(ellipse at top right, rgba(239,68,68,.20) 0%, transparent 60%); }
+  .cross-promo__card:hover {
+    transform: translateY(-3px);
+    background: rgba(255,255,255,.07);
+    border-color: rgba(255,255,255,.20);
+    box-shadow: 0 16px 36px rgba(0,0,0,.35);
+    text-decoration: none;
+  }
+  .cross-promo__card:hover::after { opacity: 1; }
+
+  .cross-promo__logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 18px;
+    text-decoration: none;
+  }
+  .cross-promo__logo svg { width: 38px; height: 38px; flex-shrink: 0; }
+  .cross-promo__logo--eliks { gap: 0; align-items: flex-end; }
+  .cross-promo__eliks-E {
+    width: auto;
+    height: 1.55rem;
+    margin-right: 1px;
+    transform: translateY(-1px);
+  }
+  .cross-promo__logo--eliks .cross-promo__logo-word { color: #e4e0ff; }
+  .cross-promo__logo--eliks .cross-promo__logo-dot  { margin-left: 8px; }
+  .cross-promo__logo-word {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -.04em;
+    line-height: 1;
+  }
+  .cross-promo__logo-dot {
+    font-size: .68rem;
+    font-weight: 500;
+    color: #94a3b8;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    margin-top: 6px;
+    align-self: flex-end;
+  }
+
+  .cross-promo__tagline {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .10em;
+    margin: 0 0 10px;
+    color: #c7d2fe;
+  }
+  .cross-promo__card--eliks     .cross-promo__tagline { color: #6ee7b7; }
+  .cross-promo__card--suite     .cross-promo__tagline { color: #d8b4fe; }
+  .cross-promo__card--studiopdf .cross-promo__tagline { color: #f4a78a; }
+  .cross-promo__card--bobeez    .cross-promo__tagline { color: #fca5a5; }
+
+  .cross-promo__logo--icon { gap: 10px; }
+  .cross-promo__icon-img {
+    width: 38px; height: 38px;
+    flex-shrink: 0;
+    object-fit: contain;
+  }
+  .cross-promo__card--studiopdf .cross-promo__icon-img { width: 42px; height: 42px; }
+
+  .cross-promo__card--soon {
+    cursor: default;
+    opacity: .85;
+  }
+  .cross-promo__card--soon::before {
+    content: "Bientôt";
+    position: absolute;
+    top: 14px; right: 14px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #fca5a5;
+    background: rgba(239,68,68,.10);
+    border: 1px solid rgba(239,68,68,.30);
+    padding: 4px 8px;
+    border-radius: 100px;
+    z-index: 1;
+  }
+  .cross-promo__card--soon:hover { transform: none; }
+  .cross-promo__cta--soon {
+    border-bottom-color: rgba(255,255,255,.15);
+    color: #94a3b8;
+  }
+  .cross-promo__desc {
+    font-size: 15px;
+    color: #cbd5e0;
+    line-height: 1.6;
+    margin: 0 0 22px;
+  }
+  .cross-promo__cta {
+    margin-top: auto;
+    font-weight: 700;
+    color: #fff;
+    font-size: 15px;
+    border-bottom: 1px solid rgba(255,255,255,.4);
+    padding-bottom: 2px;
+    transition: border-color .2s ease, transform .2s ease;
+  }
+  .cross-promo__card:hover .cross-promo__cta { border-bottom-color: #fff; }
+</style>
+
+<section class="cross-promo">
+  <div class="container">
+    <h2>Et après DéliNote&nbsp;?</h2>
+    <p class="cross-promo__intro">DéliNote n'est qu'un maillon : tout l'écosystème prend le relais. <strong>Triskell</strong> met ta présence en ligne, <strong>Eliks</strong> la fait pousser, <strong>la Suite des Héros</strong> remet ton PC en ordre, <strong>Studio PDF</strong> dompte tes documents et <strong>Bobeez</strong> arrive bientôt.</p>
+
+    <div class="cross-promo__grid">
+      <a href="https://triskell-studio.fr" target="_blank" rel="noopener" class="cross-promo__card cross-promo__card--triskell" aria-label="Triskell Studio — sites web pour indépendants">
+        <div class="cross-promo__logo">
+          <svg viewBox="0 0 36 36" fill="none" aria-hidden="true">
+            <path d="M18,18 C20,15 22,10 20,6 C18,2 13,3 13,7.5 C13,12 16,15.5 18,18Z" fill="#6366F1"/>
+            <path d="M18,18 C20,15 22,10 20,6 C18,2 13,3 13,7.5 C13,12 16,15.5 18,18Z" fill="#8B5CF6" transform="rotate(120 18 18)"/>
+            <path d="M18,18 C20,15 22,10 20,6 C18,2 13,3 13,7.5 C13,12 16,15.5 18,18Z" fill="#F97316" transform="rotate(240 18 18)"/>
+            <circle cx="18" cy="18" r="2.8" fill="#08080F"/>
+          </svg>
+          <span class="cross-promo__logo-word">triskell</span><span class="cross-promo__logo-dot">studio</span>
+        </div>
+        <p class="cross-promo__tagline">Sites web sur-mesure</p>
+        <p class="cross-promo__desc">Design moderne, optimisé Google, formulaire de contact intégré. Pensé pour freelances, photographes, artisans et indépendants.</p>
+        <span class="cross-promo__cta">Voir Triskell Studio →</span>
+      </a>
+
+      <a href="https://eliks.triskell-studio.fr" target="_blank" rel="noopener" class="cross-promo__card cross-promo__card--eliks" aria-label="Eliks Studio — Growth Operator commission pure">
+        <div class="cross-promo__logo cross-promo__logo--eliks">
+          <svg class="cross-promo__eliks-E" viewBox="4 3 23 26" fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="eliks-promo-g" x1="4" y1="3" x2="27" y2="29" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#10B981"/>
+                <stop offset="50%" stop-color="#6366F1"/>
+                <stop offset="100%" stop-color="#8B5CF6"/>
+              </linearGradient>
+            </defs>
+            <rect x="6" y="4"  width="3"  height="24" rx="1.5" fill="url(#eliks-promo-g)"/>
+            <rect x="6" y="4"  width="10" height="4"  rx="1.5" fill="url(#eliks-promo-g)"/>
+            <rect x="6" y="14" width="15" height="4"  rx="1.5" fill="url(#eliks-promo-g)"/>
+            <rect x="6" y="24" width="20" height="4"  rx="1.5" fill="url(#eliks-promo-g)"/>
+          </svg><span class="cross-promo__logo-word cross-promo__logo-word--eliks">liks</span><span class="cross-promo__logo-dot">studio</span>
+        </div>
+        <p class="cross-promo__tagline">Growth Operator · commission pure</p>
+        <p class="cross-promo__desc">On fait pousser ta présence sur Instagram, TikTok, LinkedIn, YouTube et X. Payés uniquement sur les ventes générées : si tu ne gagnes rien, on ne gagne rien.</p>
+        <span class="cross-promo__cta">Voir Eliks Studio →</span>
+      </a>
+
+      <a href="https://triskell-studio.fr" target="_blank" rel="noopener" class="cross-promo__card cross-promo__card--suite" aria-label="La Suite des Héros — pack de 11 outils desktop">
+        <div class="cross-promo__logo cross-promo__logo--icon">
+          <img src="img/suite-des-heros.png" alt="" class="cross-promo__icon-img" width="38" height="38" loading="lazy" decoding="async">
+          <span class="cross-promo__logo-word">Suite des Héros</span>
+        </div>
+        <p class="cross-promo__tagline">Pack 11 outils · paiement unique</p>
+        <p class="cross-promo__desc">11 outils desktop pour reprendre le contrôle de ton PC : range, déduplique, convertis, OCR, signe… Tout en local, sans abonnement, sans cloud.</p>
+        <span class="cross-promo__cta">Voir la Suite des Héros →</span>
+      </a>
+
+      <a href="#" class="cross-promo__card cross-promo__card--studiopdf" aria-label="Studio PDF — l'atelier PDF complet">
+        <div class="cross-promo__logo cross-promo__logo--icon">
+          <img src="img/studiopdf-bertrand.png" alt="" class="cross-promo__icon-img" width="42" height="42" loading="lazy" decoding="async">
+          <span class="cross-promo__logo-word">Studio PDF</span>
+        </div>
+        <p class="cross-promo__tagline">L'atelier PDF complet</p>
+        <p class="cross-promo__desc">Fusionne, découpe, compresse, signe, OCR — Bertrand le blaireau s'occupe de tout. Hors ligne, sans envoyer un seul fichier sur le web.</p>
+        <span class="cross-promo__cta">Voir Studio PDF →</span>
+      </a>
+
+      <span class="cross-promo__card cross-promo__card--bobeez cross-promo__card--soon" aria-label="Bobeez — bientôt disponible">
+        <div class="cross-promo__logo cross-promo__logo--icon">
+          <img src="img/bobeez-icon.png" alt="" class="cross-promo__icon-img" width="40" height="40" loading="lazy" decoding="async">
+          <span class="cross-promo__logo-word">Bobeez</span>
+        </div>
+        <p class="cross-promo__tagline">Nouveau projet · en préparation</p>
+        <p class="cross-promo__desc">Le prochain de la fratrie. Encore au chaud dans l'atelier — détails très bientôt.</p>
+        <span class="cross-promo__cta cross-promo__cta--soon">Bientôt</span>
+      </span>
+    </div>
+  </div>
+</section>
+
 </main>
 
 <!-- ===================== LIGHTBOX (cliquez sur un screenshot pour agrandir) ===================== -->
