@@ -19,6 +19,14 @@ type Entry = {
 
 export const CHANGELOG: Entry[] = [
   {
+    version: '0.9.7',
+    date: '2026-05-03',
+    title: 'Logo Triskell Studio rendu visible dans la pop-up Nouveautés',
+    highlights: [
+      '✨ Le logo « propulsé par Triskell Studio » en bas de cette pop-up passe d\'un mini triskèle à 11 px noyé dans le gris à un **badge dégradé turquoise→indigo de 28 px** avec le triskèle bien visible. Studio name en orange accent, texte normal',
+    ],
+  },
+  {
     version: '0.9.6',
     date: '2026-05-03',
     title: 'Mise à jour : on te dit ce qui se passe',
