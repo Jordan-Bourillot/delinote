@@ -19,6 +19,17 @@ type Entry = {
 
 export const CHANGELOG: Entry[] = [
   {
+    version: '0.9.9',
+    date: '2026-05-03',
+    title: 'Offrir DéliNote + Programme de parrainage',
+    highlights: [
+      '🎁 **Offre DéliNote** à un proche : nouvelle section dans Réglages avec un formulaire (email du destinataire, prénom, petit mot). Un clic ouvre le paiement Stripe pré-rempli — la licence part automatiquement par mail au destinataire',
+      '🤝 **Programme de parrainage** : ton code parrain unique de 8 caractères s\'affiche dans les Réglages, copiable d\'un clic, partageable par mail / WhatsApp / Web Share',
+      '💰 **5 € par filleul** qui achète DéliNote avec ton code. Sans plafond, sans engagement. Paiement par virement à partir de 20 €, ou en bons à valoir sur d\'autres apps Triskell Studio',
+      '✅ **Stripe branché** : le bouton « Acheter » sur le site marche enfin pour de vrai. Les codes parrain partagés via lien sont automatiquement attribués à la transaction',
+    ],
+  },
+  {
     version: '0.9.8',
     date: '2026-05-03',
     title: 'Triskèle redessiné + crédit Triskell Studio en bouton-pilule',
