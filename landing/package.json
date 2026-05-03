@@ -1,0 +1,14 @@
+{
+  "name": "delinote-landing",
+  "private": true,
+  "version": "1.0.0",
+  "description": "DéliNote landing site + Stripe webhook + referrals dashboard",
+  "type": "module",
+  "scripts": {
+    "build": "echo \"Static site — nothing to build\""
+  },
+  "dependencies": {
+    "@netlify/blobs": "^9.1.6",
+    "stripe": "^18.4.0"
+  }
+}

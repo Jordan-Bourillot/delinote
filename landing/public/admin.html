@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>DéliNote · Admin parrainage</title>
+<style>
+  :root { color-scheme: light dark; --accent: #F37223; --bg: #FAF6EE; --bg-alt: #fff; --text: #1B2330; --muted: #6b7280; --border: rgba(0,0,0,.1); }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0D1418; --bg-alt: #181f25; --text: #e5e7eb; --muted: #9ca3af; --border: rgba(255,255,255,.1); } }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); }
+  header { padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; background: var(--bg-alt); }
+  header h1 { margin: 0; font-size: 18px; font-weight: 700; flex: 1 }
+  header .badge { background: var(--accent); color: #fff; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 24px }
+  .stat { background: var(--bg-alt); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px }
+  .stat .label { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700 }
+  .stat .value { font-size: 26px; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; letter-spacing: -.02em }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center }
+  .toolbar input, .toolbar select { padding: 6px 10px; border: 1px solid var(--border); background: var(--bg-alt); color: var(--text); border-radius: 6px; font-size: 13px }
+  .toolbar button { padding: 6px 12px; border: 1px solid var(--border); background: var(--bg-alt); color: var(--text); border-radius: 6px; font-size: 13px; cursor: pointer }
+  .toolbar button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600 }
+  .toolbar .spacer { flex: 1 }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--bg-alt); border-radius: 10px; overflow: hidden; border: 1px solid var(--border) }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top }
+  th { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 700; background: rgba(0,0,0,.02) }
+  @media (prefers-color-scheme: dark) { th { background: rgba(255,255,255,.03) } }
+  td.amount { font-variant-numeric: tabular-nums; font-weight: 600 }
+  td.code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em }
+  .pill.pending { background: rgba(234,179,8,.15); color: #b45309 }
+  .pill.paid { background: rgba(34,197,94,.18); color: #15803d }
+  .pill.cancelled { background: rgba(239,68,68,.15); color: #b91c1c }
+  .pill.refunded { background: rgba(239,68,68,.15); color: #b91c1c }
+  .empty { padding: 60px 24px; text-align: center; color: var(--muted) }
+  .login { max-width: 400px; margin: 80px auto; background: var(--bg-alt); border: 1px solid var(--border); border-radius: 12px; padding: 28px }
+  .login h2 { margin: 0 0 6px; font-size: 18px }
+  .login p { margin: 0 0 14px; color: var(--muted); font-size: 13px; line-height: 1.5 }
+  .login input { width: 100%; padding: 10px 12px; font-family: ui-monospace, monospace; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 6px; font-size: 13px; margin-bottom: 10px }
+  .login button { width: 100%; padding: 10px; background: var(--accent); color: #fff; border: 0; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer }
+  details.help { background: var(--bg-alt); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 18px }
+  details.help summary { font-weight: 600; cursor: pointer; color: var(--accent) }
+  details.help pre { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; overflow-x: auto; font-size: 12px }
+  details.help code { font-size: 12px }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap }
+  .actions button { padding: 4px 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 4px; font-size: 11px; cursor: pointer }
+  .actions button:hover { background: var(--accent); color: #fff; border-color: var(--accent) }
+  .by-ref { background: var(--bg-alt); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 18px }
+  .by-ref h3 { margin: 0 0 10px; font-size: 14px }
+  .by-ref ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)) }
+  .by-ref li { display: flex; gap: 10px; align-items: center; padding: 6px 8px; background: var(--bg); border-radius: 6px; font-size: 13px }
+  .by-ref li code { font-weight: 700 }
+  .by-ref li .num { font-variant-numeric: tabular-nums }
+</style>
+</head>
+<body>
+  <div id="login-screen" class="login" style="display:none">
+    <h2>🔒 Admin parrainage DéliNote</h2>
+    <p>Cette page liste les paiements parrainés et permet de marquer ceux qui ont été payés à leur parrain. Colle ton <code>ADMIN_TOKEN</code> Netlify ci-dessous.</p>
+    <input id="token-input" type="password" placeholder="ADMIN_TOKEN…" autocomplete="off" />
+    <button onclick="login()">Voir le tableau de bord</button>
+    <p style="margin-top:14px;font-size:11px">Tu peux aussi utiliser <code>?token=…</code> dans l'URL pour ne pas avoir à le saisir. <a href="#how-to" onclick="document.getElementById('login-screen').style.display='none';document.getElementById('main').style.display='block';return false">Configuration initiale →</a></p>
+  </div>
+
+  <div id="main" style="display:none">
+    <header>
+      <h1>📊 Parrainage DéliNote</h1>
+      <span class="badge" id="mode-badge">—</span>
+      <button onclick="refresh()" style="padding:6px 12px;border:1px solid var(--border);background:var(--bg-alt);color:var(--text);border-radius:6px;font-size:13px;cursor:pointer">↻ Rafraîchir</button>
+      <button onclick="logout()" style="padding:6px 12px;border:1px solid var(--border);background:var(--bg-alt);color:var(--text);border-radius:6px;font-size:13px;cursor:pointer">Déconnexion</button>
+    </header>
+
+    <main>
+      <details class="help" id="how-to">
+        <summary>⚙️ Configuration (à faire une fois)</summary>
+        <ol style="margin-top:10px;line-height:1.7">
+          <li><strong>Netlify env vars</strong> — depuis le dossier <code>landing/</code> :<pre>netlify env:set STRIPE_SECRET_KEY "sk_live_..."
+netlify env:set STRIPE_WEBHOOK_SECRET "whsec_..."
+netlify env:set ADMIN_TOKEN "$(node -e &quot;console.log(require('crypto').randomBytes(24).toString('base64url'))&quot;)"</pre></li>
+          <li><strong>Stripe webhook</strong> — Dashboard → Developers → Webhooks → Add endpoint :
+            <ul>
+              <li>URL : <code>https://delinote.triskell-studio.fr/api/stripe-webhook</code></li>
+              <li>Events : <code>checkout.session.completed</code>, <code>checkout.session.async_payment_succeeded</code>, <code>charge.refunded</code></li>
+              <li>Copier le « Signing secret » (<code>whsec_…</code>) → mettre dans <code>STRIPE_WEBHOOK_SECRET</code></li>
+            </ul>
+          </li>
+          <li><strong>Re-déployer</strong> : <code>netlify deploy --prod --dir=.</code> depuis <code>landing/</code></li>
+          <li><strong>Tester</strong> : depuis Stripe Dashboard, "Send test webhook" sur ton endpoint → cette page doit afficher la conversion test.</li>
+        </ol>
+      </details>
+
+      <div class="grid" id="stats"></div>
+
+      <div class="by-ref" id="by-ref-block" style="display:none">
+        <h3>Par parrain — gains à payer</h3>
+        <ul id="by-ref-list"></ul>
+      </div>
+
+      <div class="toolbar">
+        <input id="filter-ref" placeholder="Filtrer par code parrain (ex: ABCD1234)" />
+        <select id="filter-payout">
+          <option value="">Tous les statuts</option>
+          <option value="pending">À payer</option>
+          <option value="paid">Déjà payés</option>
+          <option value="cancelled">Annulés</option>
+        </select>
+        <button onclick="refresh()">Filtrer</button>
+        <span class="spacer"></span>
+        <span id="count" class="pill" style="background:var(--bg-alt);color:var(--muted)"></span>
+      </div>
+
+      <div id="table-wrap"></div>
+    </main>
+  </div>
+
+<script>
+  let TOKEN = '';
+
+  // Pre-fill from URL ?token= or sessionStorage
+  (function init() {
+    const fromUrl = new URLSearchParams(window.location.search).get('token');
+    const fromSession = sessionStorage.getItem('delinote.admin.token');
+    TOKEN = fromUrl || fromSession || '';
+    if (TOKEN) {
+      sessionStorage.setItem('delinote.admin.token', TOKEN);
+      showMain();
+      refresh();
+    } else {
+      document.getElementById('login-screen').style.display = 'block';
+    }
+  })();
+
+  function login() {
+    const t = document.getElementById('token-input').value.trim();
+    if (!t) return;
+    TOKEN = t;
+    sessionStorage.setItem('delinote.admin.token', t);
+    showMain();
+    refresh();
+  }
+
+  function logout() {
+    sessionStorage.removeItem('delinote.admin.token');
+    location.reload();
+  }
+
+  function showMain() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('main').style.display = 'block';
+  }
+
+  async function refresh() {
+    const ref = document.getElementById('filter-ref').value.trim();
+    const payout = document.getElementById('filter-payout').value;
+    const params = new URLSearchParams();
+    if (ref) params.set('ref', ref);
+    if (payout) params.set('payout', payout);
+    params.set('token', TOKEN);
+    let res;
+    try {
+      res = await fetch('/api/referrals?' + params.toString());
+    } catch (e) {
+      document.getElementById('table-wrap').innerHTML =
+        '<div class="empty">Erreur réseau : ' + escapeHtml(String(e)) + '</div>';
+      return;
+    }
+    if (res.status === 401) { logout(); return; }
+    const data = await res.json();
+    if (!data.ok) {
+      document.getElementById('table-wrap').innerHTML =
+        '<div class="empty">Erreur : ' + escapeHtml(data.error || 'inconnue') + '</div>';
+      return;
+    }
+    render(data);
+  }
+
+  function render(data) {
+    document.getElementById('count').textContent = data.count + ' conversions';
+
+    // ── Stats ──────────────────────────────────────────────────────
+    const totalEur = data.items.reduce((s, it) => s + (it.amount || 0), 0) / 100;
+    const totalRefs = data.items.filter((it) => it.refCode).length;
+    const totalPending = data.byReferrer.reduce((s, r) => s + r.pendingEur, 0);
+    const totalPaid = data.byReferrer.reduce((s, r) => s + r.paidEur, 0);
+    document.getElementById('stats').innerHTML = `
+      <div class="stat"><div class="label">Conversions</div><div class="value">${data.count}</div></div>
+      <div class="stat"><div class="label">Avec parrain</div><div class="value">${totalRefs}</div></div>
+      <div class="stat"><div class="label">Chiffre brut</div><div class="value">${totalEur.toFixed(2)} €</div></div>
+      <div class="stat"><div class="label">Gains à payer</div><div class="value" style="color:#b45309">${totalPending.toFixed(2)} €</div></div>
+      <div class="stat"><div class="label">Gains déjà versés</div><div class="value" style="color:#15803d">${totalPaid.toFixed(2)} €</div></div>
+    `;
+
+    // ── By referrer ────────────────────────────────────────────────
+    const byRef = data.byReferrer || [];
+    const byRefBlock = document.getElementById('by-ref-block');
+    if (byRef.length === 0) {
+      byRefBlock.style.display = 'none';
+    } else {
+      byRefBlock.style.display = 'block';
+      document.getElementById('by-ref-list').innerHTML = byRef.map((r) => `
+        <li>
+          <code>${escapeHtml(r.code)}</code>
+          <span class="num">${r.count} filleul${r.count > 1 ? 's' : ''}</span>
+          ${r.pendingEur > 0 ? `<span class="num" style="color:#b45309">${r.pendingEur.toFixed(2)} € à payer</span>` : ''}
+          ${r.paidEur > 0 ? `<span class="num" style="color:#15803d">${r.paidEur.toFixed(2)} € versés</span>` : ''}
+        </li>
+      `).join('');
+    }
+
+    // ── Table ──────────────────────────────────────────────────────
+    if (data.items.length === 0) {
+      document.getElementById('table-wrap').innerHTML = '<div class="empty">Aucune conversion enregistrée.<br><br>Si tu viens de configurer le webhook, tu peux le tester depuis Stripe Dashboard → Developers → Webhooks → ton endpoint → "Send test webhook" → <code>checkout.session.completed</code>.</div>';
+      return;
+    }
+    const rows = data.items.map((it) => {
+      const eur = ((it.amount || 0) / 100).toFixed(2);
+      const date = new Date(it.created).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const isPending = it.payoutStatus === 'pending';
+      const action = isPending
+        ? `<button onclick="markPaid('${it.id}')">✓ Marquer payé</button>`
+        : `<button onclick="markPending('${it.id}')">↶ Re-mettre en attente</button>`;
+      return `
+        <tr>
+          <td>${escapeHtml(date)}</td>
+          <td>${escapeHtml(it.customerEmail || '—')}<br><span style="color:var(--muted);font-size:11px">${escapeHtml(it.customerName || '')}</span></td>
+          <td class="code">${it.refCode ? escapeHtml(it.refCode) : '<span style="color:var(--muted)">—</span>'}</td>
+          <td>${it.giftRecipient ? `🎁 ${escapeHtml(it.giftRecipient)}` : '<span style="color:var(--muted)">—</span>'}</td>
+          <td class="amount">${eur} €</td>
+          <td><span class="pill ${escapeHtml(it.paymentStatus === 'refunded' ? 'refunded' : 'paid')}">${escapeHtml(it.paymentStatus)}</span></td>
+          <td><span class="pill ${escapeHtml(it.payoutStatus)}">${escapeHtml(it.payoutStatus)}</span>${it.paidAt ? `<br><span style="color:var(--muted);font-size:10px">${escapeHtml(new Date(it.paidAt).toLocaleDateString('fr-FR'))}</span>` : ''}</td>
+          <td><div class="actions">${it.refCode ? action : ''}<a href="${escapeHtml(it.stripePaymentUrl)}" target="_blank" rel="noopener" style="font-size:11px;color:var(--muted)">Stripe ↗</a></div></td>
+        </tr>
+      `;
+    }).join('');
+    document.getElementById('table-wrap').innerHTML = `
+      <table>
+        <thead><tr><th>Date</th><th>Client</th><th>Code parrain</th><th>Cadeau</th><th>Montant</th><th>Paiement</th><th>Reversement</th><th>Action</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    `;
+  }
+
+  async function markPaid(sessionId) { await mark(sessionId, 'markPaid'); }
+  async function markPending(sessionId) { await mark(sessionId, 'markPending'); }
+  async function mark(sessionId, action) {
+    const params = new URLSearchParams({ token: TOKEN });
+    const res = await fetch(`/api/referrals/${action}?${params.toString()}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    });
+    if (!res.ok) {
+      alert('Erreur : ' + (await res.text()));
+      return;
+    }
+    refresh();
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+</script>
+</body>
+</html>

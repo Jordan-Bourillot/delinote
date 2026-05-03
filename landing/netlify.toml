@@ -1,0 +1,27 @@
+# Netlify config for the DéliNote landing site.
+#
+# Layout:
+#   landing/public/        : everything that should be publicly served
+#                            (index.html, admin.html, images, screenshots…)
+#   landing/netlify/functions/ : serverless functions
+#   landing/node_modules/  : function dependencies, NOT published
+#
+# The Stripe webhook is exposed at /api/stripe-webhook
+# (Stripe Dashboard → Developers → Webhooks → set this URL).
+
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Defensive : even if someone changes `publish`, never serve npm internals.
+[[redirects]]
+  from = "/node_modules/*"
+  to = "/index.html"
+  status = 404
+[[redirects]]
+  from = "/package*.json"
+  to = "/index.html"
+  status = 404
