@@ -63,9 +63,26 @@ export default async (req) => {
 
   const store = getStore('referrals');
 
+  // Le compte Stripe est mutualisé entre plusieurs produits Triskell.
+  // On blacklist les products connus des autres landings pour éviter
+  // d'enregistrer leurs ventes comme des ventes DéliNote dans le store
+  // de parrainage (bug observé 2026-05-03 sur la Suite des Héros).
+  // Idéalement, le Payment Link Stripe DéliNote devrait poser
+  // metadata.product = 'delinote-v1' et on ferait l'inverse (whitelist).
+  const OTHER_TRISKELL_PRODUCTS = new Set([
+    'suite-des-heros-v1',
+    'pack-electricien-v1',
+    'site-officiel-v1',
+  ]);
+
   try {
     if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
       const session = event.data.object;
+      const product = session.metadata?.product;
+      if (product && OTHER_TRISKELL_PRODUCTS.has(product)) {
+        console.log(`[webhook] ignored — product="${product}" appartient à une autre landing Triskell`);
+        return new Response('OK', { status: 200 });
+      }
       // The custom fields are returned in `custom_fields` — find ours by key.
       const customFields = session.custom_fields || [];
       const giftRecipient = customFields.find((f) => /destinataire/i.test(f.label?.custom || ''))?.text?.value || '';
