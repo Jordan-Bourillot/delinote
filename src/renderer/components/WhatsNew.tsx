@@ -314,8 +314,7 @@ export default function WhatsNewModal({ onClose }: { onClose: () => void }) {
         <div className="px-4 py-3 border-t theme-border-soft theme-bg-soft flex items-center gap-2">
           <div className="flex items-center gap-2 text-xs theme-text">
             <span
-              className="w-7 h-7 rounded-md flex items-center justify-center text-white shrink-0 shadow-sm"
-              style={{ background: 'linear-gradient(135deg, #0d9488, #6366f1)' }}
+              className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 bg-white border theme-border-soft shadow-sm"
             >
               <TriskellMark size={18} />
             </span>

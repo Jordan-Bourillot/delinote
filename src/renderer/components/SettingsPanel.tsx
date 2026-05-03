@@ -479,11 +479,8 @@ function AboutSection() {
       </ul>
       <p className="text-xs theme-muted mt-4">v{__APP_VERSION__} — {t('settings.aboutVersionSuffix')}</p>
       <div className="mt-6 pt-5 border-t theme-border-soft flex items-center gap-3">
-        <div
-          className="w-10 h-10 rounded-lg flex items-center justify-center text-white shrink-0"
-          style={{ background: 'linear-gradient(135deg, #0d9488, #6366f1)' }}
-        >
-          <TriskellMark size={18} />
+        <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-white border theme-border-soft shadow-sm">
+          <TriskellMark size={22} />
         </div>
         <div className="text-sm theme-text leading-snug">
           {t('studio.thanks')}
