@@ -1568,10 +1568,11 @@
   document.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
-  // ---------- Stripe checkout (à brancher) ----------
-  // TODO : remplacer STRIPE_CHECKOUT_URL par votre lien Stripe Payment Link
-  // (Dashboard Stripe → Payment Links → Créer → coller l'URL ci-dessous).
-  const STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/REMPLACEZ_MOI';
+  // ---------- Stripe checkout ----------
+  // Live Payment Link created in the Stripe dashboard for "DéliNote — Licence à vie · 29 €".
+  // Carries two custom fields ("Email du destinataire", "Petit mot") that the gift flow
+  // forwards via URL params, plus client_reference_id for referral attribution.
+  const STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/8x29ATb5e91l3ys7Gv38400';
 
   // ---------- Referral & gift handling ----------
   // The app's settings panel can build links like:
