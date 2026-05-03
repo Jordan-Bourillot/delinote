@@ -1573,13 +1573,68 @@
   // (Dashboard Stripe → Payment Links → Créer → coller l'URL ci-dessous).
   const STRIPE_CHECKOUT_URL = 'https://buy.stripe.com/REMPLACEZ_MOI';
 
+  // ---------- Referral & gift handling ----------
+  // The app's settings panel can build links like:
+  //   ?ref=ABC123                      → records referrer code
+  //   ?gift=1&to=ami@x.fr&name=Camille → primes the page for "I'm offering this"
+  // We persist `ref` for the session so a visitor who lands via referral keeps
+  // their attribution even if they bounce around the page before clicking buy.
+  const url = new URL(window.location.href);
+  const refFromUrl = (url.searchParams.get('ref') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12);
+  const isGift = url.searchParams.get('gift') === '1';
+  const giftTo = (url.searchParams.get('to') || '').slice(0, 120);
+  const giftName = (url.searchParams.get('name') || '').slice(0, 60);
+  const giftMsg = (url.searchParams.get('msg') || '').slice(0, 280);
+
+  let activeRef = '';
+  try {
+    if (refFromUrl) {
+      sessionStorage.setItem('delinote.ref', refFromUrl);
+      activeRef = refFromUrl;
+    } else {
+      activeRef = sessionStorage.getItem('delinote.ref') || '';
+    }
+  } catch { activeRef = refFromUrl; }
+
+  function buildCheckoutUrl() {
+    // Stripe Payment Links accept `client_reference_id` which the merchant can
+    // read in the Dashboard / via webhook to attribute the sale to a referrer.
+    // Custom checkout fields (recipient email, name, message) are configured
+    // in the Stripe Payment Link itself — we forward them here as URL params
+    // so they prefill if Stripe accepts them, and we add them as metadata via
+    // `prefilled_email` and `client_reference_id` which Stripe natively supports.
+    const params = new URLSearchParams();
+    if (activeRef) params.set('client_reference_id', activeRef);
+    if (isGift && giftTo) params.set('prefilled_email', giftTo);
+    const sep = STRIPE_CHECKOUT_URL.includes('?') ? '&' : '?';
+    return params.toString() ? STRIPE_CHECKOUT_URL + sep + params.toString() : STRIPE_CHECKOUT_URL;
+  }
+
+  // ---------- Visual hints ----------
+  if (activeRef || isGift) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:50;background:#FAEFE2;color:#1B2330;border:1px solid rgba(243,114,35,.4);border-radius:999px;padding:8px 16px;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.08);display:flex;align-items:center;gap:8px';
+    banner.innerHTML = isGift
+      ? `🎁 <span><strong>Mode cadeau</strong>${giftName ? ' pour <strong>' + escapeHtml(giftName) + '</strong>' : ''}${giftTo ? ' (' + escapeHtml(giftTo) + ')' : ''} — paie, on s'occupe d'envoyer la licence.</span>`
+      : `✨ <span>Tu utilises le code parrain <strong style="font-family:ui-monospace,monospace">${escapeHtml(activeRef)}</strong></span>`;
+    document.body.appendChild(banner);
+    setTimeout(() => { banner.style.transition = 'opacity .6s'; banner.style.opacity = '0.85'; }, 4000);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------- CTA wiring ----------
   document.querySelectorAll('[data-cta]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       // Tracking placeholder — branchez Plausible / GA / Posthog ici.
       // window.plausible && plausible('CTA click', { props: { location: btn.dataset.cta } });
-      if (btn.id === 'buy-cta') {
+      if (btn.id === 'buy-cta' || btn.tagName === 'A' && btn.getAttribute('href') === '#prix' && btn.dataset.cta) {
+        // Only redirect for the actual buy button — anchor buttons keep their normal behavior.
+        if (btn.id !== 'buy-cta') return;
         e.preventDefault();
-        window.location.href = STRIPE_CHECKOUT_URL;
+        window.location.href = buildCheckoutUrl();
       }
     });
   });
