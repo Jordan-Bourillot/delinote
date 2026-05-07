@@ -147,7 +147,11 @@
       "include": "build/installer.nsh",
       "deleteAppDataOnUninstall": false,
       "differentialPackage": true,
-      "warningsAsErrors": false
+      "warningsAsErrors": false,
+      "artifactName": "${productName}-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable.${ext}"
     },
     "mac": {
       "target": "dmg",
